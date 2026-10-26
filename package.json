@@ -1,0 +1,36 @@
+{
+  "name": "social-care",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker": "node --env-file-if-exists=.env worker/index.ts",
+    "test": "node --test --test-concurrency=1 \"tests/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node --env-file-if-exists=.env db/migrate.ts",
+    "db:seed:cafam": "node --env-file-if-exists=.env db/seed-cafam.ts",
+    "usuario": "node --env-file-if-exists=.env scripts/usuario.ts",
+    "db:seed:demo": "node --env-file-if-exists=.env db/seed-demo.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^1.61.0",
+    "mysql2": "^3.24.6",
+    "next": "16.4.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  }
+}

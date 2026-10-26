@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/*
+  Panel tipo dashboard: fondo neutro, superficies blancas con borde fino (sin sombra encima) y
+  esquinas suaves. El rojo Ogilvy queda para el logo, el botón principal y lo crítico.
+  Las series de datos usan una paleta categórica validada para daltonismo (skill dataviz):
+  azul, naranja, aqua, amarillo, en ese orden fijo.
+*/
+@theme {
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-line: #e4e7ec;
+  --color-line-strong: #d0d5dd;
+  --color-ink: #101828;
+  --color-ink-2: #344054;
+  --color-ink-3: #5d6679;
+
+  --color-brand: #ef3b3a; /* logo y acentos grandes */
+  --color-brand-ink: #c8221f; /* texto y botones en rojo: 5,7:1 sobre blanco */
+  --color-brand-strong: #a51b18; /* hover del botón principal */
+  --color-brand-soft: #fdeceb;
+
+  --color-s1: #2a78d6; /* la IA responde */
+  --color-s2: #eb6834; /* pasa a una persona */
+  --color-s3: #1baf7a; /* se oculta */
+  --color-s4: #eda100; /* sin respuesta todavía */
+
+  --color-ok: #067647;
+  --color-ok-soft: #ecfdf3;
+  --color-warn: #a15c07;
+  --color-warn-soft: #fef6e7;
+
+  --font-sans: var(--font-ogilvy-sans), -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: var(--font-ogilvy-serif), Georgia, "Times New Roman", serif;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Superficies del navegador con la paleta del panel. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-ink);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-ink);
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Editor de la matriz: lo que depende de una opción se muestra solo cuando está elegida, sin JS. */
+.flow-step [data-when] { display: none; }
+.flow-step:has(input[value="plantilla"]:checked) [data-when~="plantilla"],
+.flow-step:has(input[value="pedir"]:checked) [data-when~="pedir"],
+.flow-step:has(input[name="alert_level"]:not([value="no"]):checked) [data-when~="aviso"] { display: block; }
