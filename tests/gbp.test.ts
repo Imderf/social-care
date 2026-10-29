@@ -154,7 +154,7 @@ test("si Google quita el permiso, las sedes pasan a error con un motivo claro, y
   assert.equal(Number((await rows("SELECT COUNT(*) AS n FROM accounts WHERE client_id = ? AND status = 'error'", [cafam]))[0].n), 1, "se corta en la primera sede con error");
   assert.match((await rows("SELECT last_sync_summary FROM gbp_connections WHERE client_id = ?", [cafam]))[0].last_sync_summary, /no aprobó el acceso/);
   assert.match(gbpErrorText(new GbpError("x", 401)), /Vuelve a conectar/);
-  assert.match(gbpErrorText(new GbpError("x", 429)), /limitó las consultas/);
+  assert.match(gbpErrorText(new GbpError("x", 429)), /limitó las consultas.*primera conexión.*cuota llega en 0/);
   assert.match(gbpErrorText(new Error("red")), /no respondió bien/);
   await saveGbpConnection(db, cafam, "admin@cafam.test", "otro-token");
   assert.equal(Number((await rows("SELECT COUNT(*) AS n FROM accounts WHERE client_id = ? AND status = 'error'", [cafam]))[0].n), 0);

@@ -60,7 +60,7 @@ export const gbpErrorText = (e: unknown) =>
     : e instanceof GbpError && e.status === 401
       ? "El permiso de Google venció o se quitó. Vuelve a conectar la cuenta."
       : e instanceof GbpError && e.status === 429
-        ? "Google limitó las consultas por un momento. Se reintenta solo."
+        ? "Google limitó las consultas. Si es la primera conexión, lo más probable es que Google todavía no haya aprobado el acceso del proyecto a la API de Business Profile (la cuota llega en 0). Si ya funcionaba, se reintenta solo."
         : "Google no respondió bien. Se reintenta solo.";
 
 export type GbpFetch = typeof fetch;
