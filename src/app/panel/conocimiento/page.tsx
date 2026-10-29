@@ -5,7 +5,8 @@ import { listKnowledge } from "@/lib/data";
 import { TOPICS } from "@/lib/flow";
 import { knowledgeSuggestions, learnedExamples } from "@/lib/learning";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { NoClient } from "../no-client";
 import { addItem, dismiss, forgetExample, removeItem } from "./actions";
 
 const ORIGIN = {

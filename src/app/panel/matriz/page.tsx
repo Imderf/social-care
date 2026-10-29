@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { listCaseTypes, listTemplates } from "@/lib/data";
 import { currentClient } from "../current";
 import { Pencil, Plus } from "lucide-react";
-import { AUTONOMY, BUTTON, Badge, NoClient, PageHeader, Skeleton } from "../ui";
+import { AUTONOMY, BUTTON, Badge, PageHeader, Skeleton } from "../ui";
+import { NoClient } from "../no-client";
 
 const LABELS: Record<string, [string, string]> = { automatica: ["automático", "automáticos"], humana: ["humano", "humanos"], escala: ["escala", "escalan"] };
 

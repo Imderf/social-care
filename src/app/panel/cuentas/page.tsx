@@ -7,7 +7,8 @@ import { getLearning } from "@/lib/learning";
 import { missingMetaConfig } from "@/lib/meta";
 import { disconnect, importHistory, setDays, setMode } from "./actions";
 import { currentClient } from "../current";
-import { BUTTON, Badge, type BadgeTone, Channel, NoClient, PageHeader, Panel, Skeleton, ago, formatDate } from "../ui";
+import { BUTTON, Badge, type BadgeTone, Channel, PageHeader, Panel, Skeleton, ago, formatDate } from "../ui";
+import { NoClient } from "../no-client";
 
 const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
   conectada: { label: "Conectada", tone: "ok" },

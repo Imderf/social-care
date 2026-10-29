@@ -7,7 +7,8 @@ import { db } from "@/lib/db";
 import { getCaseType, listKnowledge, listTemplates } from "@/lib/data";
 import { ALERT_LEVELS, ALERT_WHEN, AMBIGUOUS, AMBIGUOUS_HELP, ASK_FIELDS, PRIVATE_HELP, PRIVATE_MODES, PUBLIC_HELP, PUBLIC_MODES, RECORDS, TOPICS, ambiguousOf, inferFlow, templateVars } from "@/lib/flow";
 import { currentClient } from "../../current";
-import { AUTONOMY, BUTTON, NoClient, PageHeader, Skeleton } from "../../ui";
+import { AUTONOMY, BUTTON, PageHeader, Skeleton } from "../../ui";
+import { NoClient } from "../../no-client";
 import { saveType } from "../actions";
 
 const FIELD = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] hover:border-line-strong";

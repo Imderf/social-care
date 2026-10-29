@@ -7,7 +7,8 @@ import { getInfluence, isWatched, listWatch, tierFor } from "@/lib/influence";
 import { getContact, listContactTimeline } from "@/lib/data";
 import { SentimentBar } from "../../../charts";
 import { currentClient } from "../../../current";
-import { Avatar, Badge, Channel, DECISION, decisionLabel, NoClient, PRIORITY, Skeleton, VERDICT, formatDate, personName, plural, OriginBadge, ProfileBadges } from "../../../ui";
+import { Avatar, Badge, Channel, DECISION, decisionLabel, PRIORITY, Skeleton, VERDICT, formatDate, personName, plural, OriginBadge, ProfileBadges } from "../../../ui";
+import { NoClient } from "../../../no-client";
 
 const dayFmt = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const hourFmt = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" });

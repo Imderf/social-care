@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ArrowDownRight, ArrowUpRight, Bot, CircleCheck, CircleX, EyeOff, Megaphone, Minus, PenLine, Star, TrendingUp, UserRound } from "lucide-react";
 import { TIER_LABELS, type Tier } from "@/lib/influence";
-import { currentUser } from "./current";
 
 // Piezas del panel. Superficies blancas con borde fino y esquinas suaves. El rojo queda para el
 // logo, el botón principal y lo crítico; cada decisión de la IA tiene un color fijo (el mismo de
@@ -252,22 +251,6 @@ export function TemplateText({ body }: { body: string }) {
         ),
       )}
     </p>
-  );
-}
-
-export async function NoClient() {
-  const me = await currentUser(undefined, true);
-  if (me.role !== "admin") {
-    return (
-      <Empty title="Todavía no tienes clientes asignados">
-        Pídele a una persona administradora que te asigne uno en Usuarios.
-      </Empty>
-    );
-  }
-  return (
-    <Empty title="Todavía no hay clientes" action={{ href: "/panel/clientes", label: "Crear cliente" }}>
-      Crea el primero en Clientes y conecta sus cuentas de Facebook e Instagram.
-    </Empty>
   );
 }
 

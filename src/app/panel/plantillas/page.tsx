@@ -4,7 +4,8 @@ import { ArrowLeft, FileText, History, MessageCircle, Pencil, Plus, Send } from 
 import { db } from "@/lib/db";
 import { listTemplateVersions, listUncovered } from "@/lib/data";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { NoClient } from "../no-client";
 import { save, toggle } from "./actions";
 
 const FIELD = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] hover:border-line-strong";

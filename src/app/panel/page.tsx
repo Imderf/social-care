@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { ACCURACY_TARGET, getAccuracyByType, getDashboard, getInsights, listOpenEscalations } from "@/lib/data";
 import { DataTable, Legend, SENTIMENT_SERIES, SentimentBar, StackedBars } from "./charts";
 import { currentClient, overviewFor } from "./current";
-import { Badge, Channel, Delta, NoClient, PageHeader, Panel, Segmented, Skeleton, ago, duration, formatDate, pct, plural, OriginBadge } from "./ui";
+import { Badge, Channel, Delta, PageHeader, Panel, Segmented, Skeleton, ago, duration, formatDate, pct, plural, OriginBadge } from "./ui";
+import { NoClient } from "./no-client";
 
 const PERIODS = ["7", "14", "30"];
 const PIECES: Record<string, string> = {

@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { missingGoogleConfig } from "@/lib/google";
 import { ORIGINS, ORIGIN_TEXT, getCases, getConnection, lastSlot, listSheetCases } from "@/lib/cases";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Skeleton, formatDate, personName, type BadgeTone } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, formatDate, personName, type BadgeTone } from "../ui";
+import { NoClient } from "../no-client";
 import { disconnectGoogle, saveCasesConfig, syncNow } from "./actions";
 import { PickSheet } from "./picker";
 

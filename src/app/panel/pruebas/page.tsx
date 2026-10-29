@@ -7,7 +7,8 @@ import { ACCURACY_TARGET, MIN_VERIFIED, PROPOSAL_FILTERS, getAccuracyByType, lis
 import { getLearning } from "@/lib/learning";
 import { listTemplates } from "@/lib/data";
 import { currentClient, overviewFor } from "../current";
-import { Avatar, Badge, type BadgeTone, Channel, DECISION, Empty, NoClient, PageHeader, Panel, Segmented, Skeleton, VERDICT, ago, pct, personName } from "../ui";
+import { Avatar, Badge, type BadgeTone, Channel, DECISION, Empty, PageHeader, Panel, Segmented, Skeleton, VERDICT, ago, pct, personName } from "../ui";
+import { NoClient } from "../no-client";
 import { review, undo } from "./actions";
 import { ReviewButtons, UndoButton } from "./verify-buttons";
 
