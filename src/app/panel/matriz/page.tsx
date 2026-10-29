@@ -4,12 +4,13 @@ import { db } from "@/lib/db";
 import { listCaseTypes, listTemplates } from "@/lib/data";
 import { currentClient } from "../current";
 import { Pencil, Plus } from "lucide-react";
-import { AUTONOMY, BUTTON, Badge, NoClient, PageHeader, Skeleton } from "../ui";
+import { AUTONOMY, BUTTON, Badge, PageHeader, Skeleton } from "../ui";
+import { NoClient } from "../no-client";
 
 const LABELS: Record<string, [string, string]> = { automatica: ["automático", "automáticos"], humana: ["humano", "humanos"], escala: ["escala", "escalan"] };
 
 async function MatrizContent() {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [types, templates] = await Promise.all([listCaseTypes(db, client.id), listTemplates(db, client.id)]);
   const names = new Map(templates.map((t) => [t.code as string, t.name as string]));

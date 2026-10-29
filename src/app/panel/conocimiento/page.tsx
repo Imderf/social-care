@@ -5,7 +5,8 @@ import { listKnowledge } from "@/lib/data";
 import { TOPICS } from "@/lib/flow";
 import { knowledgeSuggestions, learnedExamples } from "@/lib/learning";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { NoClient } from "../no-client";
 import { addItem, dismiss, forgetExample, removeItem } from "./actions";
 
 const ORIGIN = {
@@ -17,7 +18,7 @@ const FIELD = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[1
 const SMALL = "inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] font-bold text-ink-2 transition-colors hover:bg-canvas";
 
 async function ConocimientoContent() {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [items, learned, suggestions] = await Promise.all([listKnowledge(db, client.id), learnedExamples(db, client.id), knowledgeSuggestions(db, client.id)]);
   const missing = (Object.keys(TOPICS) as (keyof typeof TOPICS)[]).filter((t) => !items.some((i) => i.topic === t));

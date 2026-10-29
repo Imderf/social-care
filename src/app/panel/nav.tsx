@@ -2,45 +2,54 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Ban, BookOpen, Building2, UserRoundSearch, ClipboardCheck, FileSpreadsheet, FileText, Inbox, LayoutDashboard, MessagesSquare, Network, Plug } from "lucide-react";
+import { Ban, BookOpen, Building2, UserRoundSearch, ClipboardCheck, FileSpreadsheet, FileText, Inbox, LayoutDashboard, MessagesSquare, Network, Plug, Users } from "lucide-react";
+import { can, type Permission, type Role } from "@/lib/permissions";
 
 const GROUPS = [
   {
     label: "Operación",
     items: [
       { href: "/panel", label: "Resumen", icon: LayoutDashboard },
-      { href: "/panel/bandeja", label: "Bandeja", icon: Inbox, count: "bandeja" },
-      { href: "/panel/pruebas", label: "Pruebas", icon: ClipboardCheck, count: "pruebas" },
-      { href: "/panel/interacciones", label: "Interacciones", icon: MessagesSquare },
+      { href: "/panel/bandeja", label: "Bandeja", icon: Inbox, count: "bandeja", perm: "bandeja" },
+      { href: "/panel/pruebas", label: "Pruebas", icon: ClipboardCheck, count: "pruebas", perm: "pruebas" },
+      { href: "/panel/interacciones", label: "Interacciones", icon: MessagesSquare, perm: "bandeja" },
     ],
   },
   {
     label: "Configuración",
     items: [
-      { href: "/panel/matriz", label: "Matriz de respuesta", icon: Network },
-      { href: "/panel/plantillas", label: "Plantillas", icon: FileText },
-      { href: "/panel/palabras", label: "Palabras prohibidas", icon: Ban },
-      { href: "/panel/perfiles", label: "Perfiles e influenciadores", icon: UserRoundSearch },
-      { href: "/panel/conocimiento", label: "Base de conocimiento", icon: BookOpen },
-      { href: "/panel/hoja", label: "Hoja de casos", icon: FileSpreadsheet },
-      { href: "/panel/cuentas", label: "Cuentas conectadas", icon: Plug },
+      { href: "/panel/matriz", label: "Matriz de respuesta", icon: Network, perm: "config" },
+      { href: "/panel/plantillas", label: "Plantillas", icon: FileText, perm: "config" },
+      { href: "/panel/palabras", label: "Palabras prohibidas", icon: Ban, perm: "config" },
+      { href: "/panel/perfiles", label: "Perfiles e influenciadores", icon: UserRoundSearch, perm: "config" },
+      { href: "/panel/conocimiento", label: "Base de conocimiento", icon: BookOpen, perm: "config" },
+      { href: "/panel/hoja", label: "Hoja de casos", icon: FileSpreadsheet, perm: "config" },
+      { href: "/panel/cuentas", label: "Cuentas conectadas", icon: Plug, perm: "config" },
     ],
   },
-  { label: "Administración", items: [{ href: "/panel/clientes", label: "Clientes", icon: Building2 }] },
+  {
+    label: "Administración",
+    items: [
+      { href: "/panel/clientes", label: "Clientes", icon: Building2, perm: "config" },
+      { href: "/panel/usuarios", label: "Usuarios", icon: Users, perm: "usuarios" },
+    ],
+  },
 ] as const;
 
 export type NavCounts = { bandeja?: number; pruebas?: number; critical?: number };
 
-export function Nav({ counts = {} }: { counts?: NavCounts }) {
-  return <NavList counts={counts} path={usePathname()} />;
+export function Nav({ counts = {}, role }: { counts?: NavCounts; role?: Role }) {
+  return <NavList counts={counts} path={usePathname()} role={role} />;
 }
 
 // Solo dibuja; el layout la usa sin ruta mientras carga, porque en rutas con parámetros
 // (/panel/matriz/[id]) la URL no se conoce al prerenderizar.
-export function NavList({ counts = {}, path }: { counts?: NavCounts; path: string }) {
+export function NavList({ counts = {}, path, role }: { counts?: NavCounts; path: string; role?: Role }) {
   return (
     <nav aria-label="Panel" className="flex gap-1 overflow-x-auto px-3 pb-3 [scrollbar-width:none] md:flex-col md:gap-5 md:overflow-visible md:pb-0">
-      {GROUPS.map((g) => (
+      {GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !("perm" in i) || !role || can(role, i.perm as Permission)) }))
+        .filter((g) => g.items.length)
+        .map((g) => (
         <div key={g.label} className="flex shrink-0 gap-1 md:flex-col">
           <p className="hidden px-3 pb-1 text-[12px] font-bold text-ink-3 md:block">{g.label}</p>
           {g.items.map((item) => {

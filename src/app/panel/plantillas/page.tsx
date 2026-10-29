@@ -4,7 +4,8 @@ import { ArrowLeft, FileText, History, MessageCircle, Pencil, Plus, Send } from 
 import { db } from "@/lib/db";
 import { listTemplateVersions, listUncovered } from "@/lib/data";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, TemplateText, formatDate } from "../ui";
+import { NoClient } from "../no-client";
 import { save, toggle } from "./actions";
 
 const FIELD = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] hover:border-line-strong";
@@ -14,7 +15,7 @@ const WHEN_HELP = "Si un tipo de caso tiene varias plantillas, la IA elige la qu
 const byCode = (a: string, b: string) => (Number(a.slice(1)) || 0) - (Number(b.slice(1)) || 0) || a.localeCompare(b);
 
 async function PlantillasContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [versions, uncovered, sp] = await Promise.all([listTemplateVersions(db, client.id), listUncovered(db, client.id), searchParams]);
   // Desde el editor de la matriz: crear la plantilla que falta y volver al tipo de caso.

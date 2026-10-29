@@ -6,7 +6,8 @@ import { getInfluence, isWatched, listWatch, tierFor } from "@/lib/influence";
 import { INTERACTION_FILTERS, countUnidentified, listContacts, listInteractions } from "@/lib/data";
 import { SentimentBar } from "../charts";
 import { currentClient } from "../current";
-import { Avatar, Badge, Channel, DECISION, decisionLabel, Empty, NoClient, PageHeader, Segmented, Skeleton, VERDICT, ago, duration, formatDate, pct, personName, plural, OriginBadge, ProfileBadges } from "../ui";
+import { Avatar, Badge, Channel, DECISION, decisionLabel, Empty, PageHeader, Segmented, Skeleton, VERDICT, ago, duration, formatDate, pct, personName, plural, OriginBadge, ProfileBadges } from "../ui";
+import { NoClient } from "../no-client";
 
 const FILTER_LABELS: Record<keyof typeof INTERACTION_FILTERS, string> = {
   todas: "Todas",
@@ -19,7 +20,7 @@ const FILTER_LABELS: Record<keyof typeof INTERACTION_FILTERS, string> = {
 };
 
 async function InteraccionesContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("bandeja");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 100) : "";

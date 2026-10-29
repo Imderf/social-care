@@ -4,7 +4,8 @@ import { CircleAlert, CircleCheck, Plus, Star, X } from "lucide-react";
 import { db } from "@/lib/db";
 import { TIERS, TIER_LABELS, getInfluence, listImportant } from "@/lib/influence";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Segmented, Skeleton, plural } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Segmented, Skeleton, plural } from "../ui";
+import { NoClient } from "../no-client";
 import { addWatched, removeWatched, saveLevels } from "./actions";
 
 const FIELD = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] hover:border-line-strong";
@@ -19,7 +20,7 @@ const CHANNELS = [
 ] as const;
 
 async function PerfilesContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const view = sp.vista === "influenciadores" ? "influenciadores" : "importantes";

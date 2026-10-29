@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { missingGoogleConfig } from "@/lib/google";
 import { ORIGINS, ORIGIN_TEXT, getCases, getConnection, lastSlot, listSheetCases } from "@/lib/cases";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Skeleton, formatDate, personName, type BadgeTone } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, formatDate, personName, type BadgeTone } from "../ui";
+import { NoClient } from "../no-client";
 import { disconnectGoogle, saveCasesConfig, syncNow } from "./actions";
 import { PickSheet } from "./picker";
 
@@ -39,7 +40,7 @@ function Step({ n, title, children, id }: { n: number; title: string; children: 
 }
 
 async function HojaContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const [conn, cfg, cases] = await Promise.all([getConnection(db, client.id), getCases(db, client.id), listSheetCases(db, client.id)]);

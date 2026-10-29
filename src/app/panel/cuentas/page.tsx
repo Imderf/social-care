@@ -7,7 +7,8 @@ import { getLearning } from "@/lib/learning";
 import { missingMetaConfig } from "@/lib/meta";
 import { disconnect, importHistory, setDays, setMode } from "./actions";
 import { currentClient } from "../current";
-import { BUTTON, Badge, type BadgeTone, Channel, NoClient, PageHeader, Panel, Skeleton, ago, formatDate } from "../ui";
+import { BUTTON, Badge, type BadgeTone, Channel, PageHeader, Panel, Skeleton, ago, formatDate } from "../ui";
+import { NoClient } from "../no-client";
 
 const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
   conectada: { label: "Conectada", tone: "ok" },
@@ -38,7 +39,7 @@ const ERRORS: Record<string, string> = {
 };
 
 async function CuentasContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [accounts, sp, learning] = await Promise.all([listAccounts(db, client.id), searchParams, getLearning(db, client.id)]);
   const missing = missingMetaConfig();

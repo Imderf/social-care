@@ -10,7 +10,7 @@ const CHANNELS = ["publico", "dm"] as const;
 
 // Crea una plantilla o una versión nueva de una existente. Todo filtra por el cliente elegido.
 export async function save(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const code = text(formData.get("code"), 20).toUpperCase();
   const channel = String(formData.get("channel")) as (typeof CHANNELS)[number];
   const name = text(formData.get("name"), 200);
@@ -22,7 +22,7 @@ export async function save(formData: FormData) {
 }
 
 export async function toggle(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const code = text(formData.get("code"), 20);
   const channel = String(formData.get("channel"));
   if (!client || !code || !CHANNELS.includes(channel as any)) return;

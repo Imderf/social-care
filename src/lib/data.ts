@@ -9,11 +9,16 @@ const all = async (db: Pool, sql: string, params: unknown[]) => (await db.query<
 
 export type Client = { id: number; name: string; is_demo: number };
 
-// ponytail: sin login, cualquiera elige cliente con el selector. Con el sprint 3 la lista sale
-// de los clientes del usuario en sesión.
+// El administrador ve todos; las demás personas, solo los suyos (listClientsOf).
 // Los del selector: sin los archivados.
 export const listClients = async (db: Pool) =>
   (await all(db, "SELECT id, name, COALESCE(JSON_CONTAINS(settings, 'true', '$.demo'), 0) AS is_demo FROM clients WHERE archived_at IS NULL ORDER BY is_demo, id", [])) as Client[];
+
+// Los clientes de una persona que no es administradora: solo los que se le asignaron (sin los archivados).
+export const listClientsOf = async (db: Pool, userId: number) =>
+  (await all(db, `SELECT c.id, c.name, COALESCE(JSON_CONTAINS(c.settings, 'true', '$.demo'), 0) AS is_demo
+                  FROM clients c JOIN client_members m ON m.client_id = c.id AND m.user_id = ?
+                  WHERE c.archived_at IS NULL ORDER BY is_demo, c.id`, [userId])) as Client[];
 
 // Administración de clientes: todos, con sus cuentas y su configuración.
 export const listAllClients = (db: Pool) =>

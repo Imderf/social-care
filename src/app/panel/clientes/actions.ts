@@ -11,7 +11,7 @@ const enter = async (id: number) => (await cookies()).set("cliente", String(id),
 
 // Crea el cliente, entra en él y lleva a Cuentas conectadas para conectar Facebook e Instagram.
 export async function create(formData: FormData) {
-  await currentUser();
+  await currentUser("config");
   const name = String(formData.get("name") ?? "").trim().slice(0, 120);
   const from = Number(formData.get("copy_from"));
   if (!name) return;
@@ -21,7 +21,7 @@ export async function create(formData: FormData) {
 }
 
 export async function open(formData: FormData) {
-  await currentUser();
+  await currentUser("config");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id) || id <= 0) return;
   await enter(id);
@@ -29,7 +29,7 @@ export async function open(formData: FormData) {
 }
 
 export async function archive(formData: FormData) {
-  await currentUser();
+  await currentUser("config");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id) || id <= 0) return;
   await setClientArchived(db, id, formData.get("archived") === "1");

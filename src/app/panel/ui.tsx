@@ -254,14 +254,6 @@ export function TemplateText({ body }: { body: string }) {
   );
 }
 
-export function NoClient() {
-  return (
-    <Empty title="Todavía no hay clientes" action={{ href: "/panel/clientes", label: "Crear cliente" }}>
-      Crea el primero en Clientes y conecta sus cuentas de Facebook e Instagram.
-    </Empty>
-  );
-}
-
 export function Skeleton() {
   return (
     <div aria-busy="true" aria-label="Cargando" className="animate-pulse">

@@ -5,13 +5,14 @@ import { db } from "@/lib/db";
 import { listTemplates } from "@/lib/data";
 import { findForbidden, listForbidden } from "@/lib/forbidden";
 import { currentClient } from "../current";
-import { BUTTON, Badge, Empty, NoClient, PageHeader, Panel, Skeleton, plural } from "../ui";
+import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, plural } from "../ui";
+import { NoClient } from "../no-client";
 import { add, remove } from "./actions";
 
 const FIELD = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] hover:border-line-strong";
 
 async function PalabrasContent() {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [words, templates] = await Promise.all([listForbidden(db, client.id), listTemplates(db, client.id)]);
   // Plantillas vigentes que traen una palabra prohibida: con ellas la IA no puede responder tal cual.

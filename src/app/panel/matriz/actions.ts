@@ -13,7 +13,7 @@ const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "strin
 // estar vigentes; si no, vuelve al editor con el problema. La IA recibe la matriz actualizada en la
 // siguiente clasificación.
 export async function saveType(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const id = Number(formData.get("id")) || null;
   const back = `/panel/matriz/${id ?? "nuevo"}`;
   const name = text(formData.get("name"), 200);

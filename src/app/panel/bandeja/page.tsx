@@ -6,7 +6,8 @@ import { getInfluence, isWatched, listWatch, tierFor } from "@/lib/influence";
 import { findForbidden, listForbidden, quoteList } from "@/lib/forbidden";
 import { listContactHistory, listOpenEscalations } from "@/lib/data";
 import { currentClient } from "../current";
-import { Avatar, BUTTON, Badge, Channel, DECISION, Empty, NoClient, PageHeader, Segmented, Skeleton, VERDICT, ago, pct, PRIORITY, decisionLabel, personName, OriginBadge, ProfileBadges } from "../ui";
+import { Avatar, BUTTON, Badge, Channel, DECISION, Empty, PageHeader, Segmented, Skeleton, VERDICT, ago, pct, PRIORITY, decisionLabel, personName, OriginBadge, ProfileBadges } from "../ui";
+import { NoClient } from "../no-client";
 import { cannotSend } from "@/lib/inbox";
 import { UndoButton } from "../pruebas/verify-buttons";
 import { redraftReply, resolveCase, sendReply, undoSend } from "./actions";
@@ -28,7 +29,7 @@ type Params = Promise<Record<string, string | string[] | undefined>>;
 type Escalation = Awaited<ReturnType<typeof listOpenEscalations>>[number];
 
 async function BandejaContent({ searchParams }: { searchParams: Params }) {
-  const client = await currentClient();
+  const client = await currentClient("bandeja");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const filter = FILTERS.find((f) => f === sp.prioridad) ?? "todas";

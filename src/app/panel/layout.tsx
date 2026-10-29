@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FlaskConical, LogOut, Radio } from "lucide-react";
+import { FlaskConical, LogOut, Radio, UserRound } from "lucide-react";
 import { db } from "@/lib/db";
-import { listClients } from "@/lib/data";
+import { listClients, listClientsOf } from "@/lib/data";
+import { ROLE_LABELS } from "@/lib/permissions";
 import { ClientSwitcher } from "./client-switcher";
-import { currentClient, overviewFor } from "./current";
+import { currentClient, currentUser, overviewFor } from "./current";
 import { Nav, NavList } from "./nav";
 import { signOut } from "../ingresar/actions";
 import logo from "../ogilvy-logo.png";
@@ -24,6 +25,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <Switcher />
             </Suspense>
           </div>
+          <Link href="/panel/cuenta" aria-label="Mi cuenta" className="grid size-10 place-items-center rounded-lg text-ink-3 hover:bg-canvas hover:text-ink md:hidden">
+            <UserRound size={18} aria-hidden />
+          </Link>
           <form action={signOut} className="md:hidden">
             <button type="submit" aria-label="Cerrar sesión" className="grid size-10 place-items-center rounded-lg text-ink-3 hover:bg-canvas hover:text-ink">
               <LogOut size={18} aria-hidden />
@@ -37,6 +41,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </div>
         <Suspense fallback={null}>
           <ModeStatus />
+        </Suspense>
+        <Suspense fallback={null}>
+          <AccountLink />
         </Suspense>
         <form action={signOut} className="hidden px-5 pb-4 md:block">
           <button type="submit" className="inline-flex items-center gap-2 text-[13px] font-bold text-ink-3 hover:text-ink">
@@ -56,21 +63,40 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   );
 }
 
+// Quien debe cambiar su contraseña temporal solo ve Mi cuenta: sin menú, selector ni estado (pending).
 async function Switcher() {
-  const [clients, current] = await Promise.all([listClients(db), currentClient()]);
+  const me = await currentUser(undefined, true);
+  if (me.mustChange) return null;
+  const [clients, current] = await Promise.all([me.role === "admin" ? listClients(db) : listClientsOf(db, me.id), currentClient(undefined, true)]);
   return <ClientSwitcher clients={clients} current={current?.id} />;
 }
 
 async function NavWithCounts() {
-  const client = await currentClient();
-  if (!client) return <Nav />;
+  const me = await currentUser(undefined, true);
+  if (me.mustChange) return null;
+  const client = await currentClient(undefined, true);
+  if (!client) return <Nav role={me.role} />;
   const o = await overviewFor(client.id);
-  return <Nav counts={{ bandeja: o.openEscalations, pruebas: o.toVerify, critical: o.criticalEscalations }} />;
+  return <Nav role={me.role} counts={{ bandeja: o.openEscalations, pruebas: o.toVerify, critical: o.criticalEscalations }} />;
+}
+
+async function AccountLink() {
+  const me = await currentUser(undefined, true);
+  return (
+    <Link href="/panel/cuenta" className="mx-4 mb-2 hidden items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-ink-2 hover:bg-canvas hover:text-ink md:flex">
+      <UserRound size={16} aria-hidden className="shrink-0 text-ink-3" />
+      <span className="min-w-0">
+        <strong className="block truncate">{me.name}</strong>
+        <span className="text-ink-3">{ROLE_LABELS[me.role]} · Mi cuenta</span>
+      </span>
+    </Link>
+  );
 }
 
 // Estado del sistema siempre visible: en prueba nada se publica en Meta.
 async function ModeStatus() {
-  const client = await currentClient();
+  const me = await currentUser(undefined, true);
+  const client = me.mustChange ? undefined : await currentClient(undefined, true);
   if (!client) return null;
   const o = await overviewFor(client.id);
   const live = o.liveAccounts > 0;
@@ -88,7 +114,8 @@ async function ModeStatus() {
 }
 
 async function DemoNotice() {
-  const client = await currentClient();
+  const me = await currentUser(undefined, true);
+  const client = me.mustChange ? undefined : await currentClient(undefined, true);
   if (!client?.is_demo) return null;
   return (
     <p className="mb-6 flex items-center gap-2 rounded-lg bg-warn-soft px-4 py-2.5 text-[14px] text-warn">

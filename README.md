@@ -11,6 +11,7 @@ Plataforma multicliente de Ogilvy Colombia para atender los comentarios y mensaj
 - **Solo responde lo orgánico:** los comentarios en anuncios o en publicaciones pautadas quedan para análisis y llegan como alerta a la bandeja.
 - **Hoja de casos:** se conecta con Google y lee la Hoja de cálculo donde el equipo registra los casos; cuando un caso cambia a un estado que avisa, le escribe a la persona por DM según la ventana de Meta.
 - **Panel web** con resumen e indicadores, bandeja, pruebas, interacciones y ficha por persona, editor de la matriz, plantillas con versiones, base de conocimiento, palabras prohibidas, perfiles e influenciadores, cuentas conectadas y clientes.
+- **Usuarios y roles:** la administración crea usuarios con contraseña temporal, restablece contraseñas, desactiva cuentas y asigna clientes. Tres roles: administrador, operador (Bandeja) y verificador (Pruebas).
 
 ## Cómo funciona
 
@@ -86,7 +87,7 @@ npm run worker         # worker
 npm run db:migrate     # aplica las migraciones pendientes
 npm run db:seed:demo   # cliente demo con datos de ejemplo
 npm run db:seed:cafam  # matriz, plantillas y enlaces del primer cliente
-npm run usuario -- <usuario> [nombre]   # crea un usuario o cambia su contraseña
+npm run usuario -- <usuario> [nombre]   # crea un administrador o cambia la contraseña de un usuario (el primero; los demás se crean en /panel/usuarios)
 npm test               # pruebas (necesitan la base de TEST_DATABASE_URL)
 npm run typecheck
 ```
@@ -114,7 +115,7 @@ El panel escucha solo en `127.0.0.1`. Nunca se usa `next dev` en producción.
 - Borrar comentarios es siempre una acción humana; lo automático solo puede ocultar, porque es reversible.
 - Toda tabla de negocio lleva `client_id` y toda consulta filtra por cliente.
 - Los webhooks validan la firma `X-Hub-Signature-256`, limitan el cuerpo a 512 KB y vacían el evento crudo al procesarlo.
-- Los tokens van cifrados con AES-256-GCM. El ingreso al panel tiene bloqueo por intentos y las sesiones se invalidan al cambiar la contraseña.
+- Los tokens van cifrados con AES-256-GCM. El ingreso al panel tiene bloqueo por intentos y las sesiones se invalidan al cambiar la contraseña. Los roles limitan cada pantalla y acción, y cada persona ve solo sus clientes.
 
 ## Estructura
 
