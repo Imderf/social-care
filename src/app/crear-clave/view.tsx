@@ -10,8 +10,9 @@ import { CreatePasswordForm } from "./form";
 
 // Lo que ve la persona que llega con el enlace de la administración (/c/<código>, o /crear-clave?t=<código> en los enlaces de antes).
 // Sin sesión: el enlace es la llave, sirve una vez y vence a los 7 días. Con un enlace malo, usado o vencido solo se dice que no sirve.
-async function Content({ token }: { token: string }) {
+async function Content({ tokenPromise }: { tokenPromise: Promise<string> }) {
   await connection();
+  const token = await tokenPromise;
   const who = await invitationInfo(db, token);
   if (!who) {
     return (
@@ -38,7 +39,8 @@ async function Content({ token }: { token: string }) {
   );
 }
 
-export function InvitationPage({ token }: { token: string }) {
+// El código llega como promesa: se espera dentro del Suspense (leer la ruta o la consulta fuera de él bloquea la página).
+export function InvitationPage({ token }: { token: Promise<string> }) {
   return (
     <main className="flex min-h-screen flex-col bg-surface px-4 py-8 sm:px-8">
       <div className="flex flex-1 items-center justify-center">
@@ -48,7 +50,7 @@ export function InvitationPage({ token }: { token: string }) {
             <span className="pb-0.5 text-[14px] leading-none font-bold text-brand-ink">Social Care</span>
           </div>
           <Suspense fallback={<div className="h-[320px]" />}>
-            <Content token={token} />
+            <Content tokenPromise={token} />
           </Suspense>
         </div>
       </div>
