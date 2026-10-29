@@ -1,25 +1,27 @@
 import type { Pool, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { decryptToken, encryptToken } from "./crypto.ts";
-import { accessToken, GoogleError } from "./google.ts";
+import { accessToken as refreshAccessToken, GoogleError } from "./google.ts";
 import { maskPersonalData } from "./mask.ts";
 
 // Google Business Profile: login con Google (permiso business.manage), detección automática de las cuentas y sedes de
 // quien se conecta y lectura de sus reseñas. Nadie copia claves ni busca nada: se conecta con un botón.
-// Solo lee (modo prueba): responder reseñas es la fase siguiente. Variables: las mismas de Google de la Hoja de casos
-// (GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET); la URL de regreso es PANEL_URL + /api/gbp/callback.
+// Solo lee (modo prueba): responder reseñas es la fase siguiente. Variables propias (GBP_CLIENT_ID y GBP_CLIENT_SECRET):
+// el cliente OAuth vive en el proyecto de Google Cloud que pide el acceso a la API, que no es el de la Hoja de casos.
+// La URL de regreso es PANEL_URL + /api/gbp/callback.
 // Para que las llamadas funcionen, Google tiene que haber aprobado el acceso del proyecto de Google Cloud a la API
 // (formulario de acceso básico): sin eso responde 403 y aquí se le explica a la persona.
 
 type Row = RowDataPacket & Record<string, any>;
 
 export const GBP_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/business.manage"];
-export const missingGbpConfig = () => ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"].filter((k) => !process.env[k]);
-export const gbpRedirectUri = () => `${(process.env.PANEL_URL || "http://localhost:3030").replace(/\/$/, "")}/api/gbp/callback`;
+export const missingGbpConfig = () => ["GBP_CLIENT_ID", "GBP_CLIENT_SECRET"].filter((k) => !process.env[k]);
+const accessToken = (refreshToken: string) => refreshAccessToken(refreshToken, { id: process.env.GBP_CLIENT_ID!, secret: process.env.GBP_CLIENT_SECRET! });
+export const gbpRedirectUri =() => `${(process.env.PANEL_URL || "http://localhost:3030").replace(/\/$/, "")}/api/gbp/callback`;
 
 export function gbpLoginUrl(state: string) {
   const u = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   u.search = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
+    client_id: process.env.GBP_CLIENT_ID!,
     redirect_uri: gbpRedirectUri(),
     response_type: "code",
     scope: GBP_SCOPES.join(" "),
@@ -34,7 +36,7 @@ export function gbpLoginUrl(state: string) {
 export async function exchangeGbpCode(code: string) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    body: new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID!, client_secret: process.env.GOOGLE_CLIENT_SECRET!, code, grant_type: "authorization_code", redirect_uri: gbpRedirectUri() }),
+    body: new URLSearchParams({ client_id: process.env.GBP_CLIENT_ID!, client_secret: process.env.GBP_CLIENT_SECRET!, code, grant_type: "authorization_code", redirect_uri: gbpRedirectUri() }),
     signal: AbortSignal.timeout(20_000),
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, string>;

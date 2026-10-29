@@ -77,6 +77,7 @@ Están todas en `.env.example`. El `.env` nunca se sube al repositorio.
 | `APP_BASE_URL`, `PANEL_URL` | Dominio público y dirección del panel |
 | `PANEL_PUBLICO` | `1` para servir el panel en el dominio público, detrás de su login. Sin ella, el dominio solo muestra las páginas legales, el webhook y la conexión con Meta |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_API_KEY`, `GOOGLE_PROJECT_NUMBER` | Hoja de casos: inicio de sesión con Google y selector de la Hoja |
+| `GBP_CLIENT_ID`, `GBP_CLIENT_SECRET` | Google Business Profile (reseñas): cliente OAuth del proyecto de Google Cloud con acceso a la API; URL de regreso `PANEL_URL/api/gbp/callback` |
 
 ## Comandos
 

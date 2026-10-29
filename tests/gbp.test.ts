@@ -7,7 +7,7 @@ import type { Pool, RowDataPacket } from "mysql2/promise";
 import { seedReviewConfig } from "../db/seed-resenas.ts";
 import { classifyInteraction, loadMatrix, type Classification } from "../src/lib/classify.ts";
 import { createClient } from "../src/lib/data.ts";
-import { GBP_SCOPES, type GbpApi, type GbpReview, cleanReviewText, connectLocations, disconnectGbp, dueGbpSyncs, gbpErrorText, gbpLoginUrl, GbpError, missingGbpConfig, saveGbpConnection, syncGbp } from "../src/lib/gbp.ts";
+import { GBP_SCOPES, type GbpApi, type GbpReview, cleanReviewText, connectLocations, disconnectGbp, dueGbpSyncs, gbpErrorText, gbpLoginUrl, GbpError, listLocations, missingGbpConfig, saveGbpConnection, syncGbp } from "../src/lib/gbp.ts";
 import { cannotSend } from "../src/lib/inbox.ts";
 import { setAccountMode } from "../src/lib/learning.ts";
 import { freshTestDb } from "./test-db.ts";
@@ -56,8 +56,8 @@ before(async () => {
 after(() => db.end());
 
 test("el login con Google pide solo lo de Business Profile y vuelve a este panel", () => {
-  process.env.GOOGLE_CLIENT_ID = "cliente-123";
-  process.env.GOOGLE_CLIENT_SECRET = "secreto";
+  process.env.GBP_CLIENT_ID = "cliente-123";
+  process.env.GBP_CLIENT_SECRET = "secreto";
   process.env.PANEL_URL = "https://panel.example.com/";
   const u = new URL(gbpLoginUrl("estado-firmado"));
   assert.equal(u.host, "accounts.google.com");
@@ -67,9 +67,35 @@ test("el login con Google pide solo lo de Business Profile y vuelve a este panel
   assert.equal(u.searchParams.get("access_type"), "offline");
   assert.equal(u.searchParams.get("state"), "estado-firmado");
   assert.deepEqual(missingGbpConfig(), []);
-  delete process.env.GOOGLE_CLIENT_SECRET;
-  assert.deepEqual(missingGbpConfig(), ["GOOGLE_CLIENT_SECRET"]);
-  process.env.GOOGLE_CLIENT_SECRET = "secreto";
+  assert.equal(u.searchParams.get("client_id"), "cliente-123");
+  delete process.env.GBP_CLIENT_SECRET;
+  assert.deepEqual(missingGbpConfig(), ["GBP_CLIENT_SECRET"]);
+  process.env.GBP_CLIENT_SECRET = "secreto";
+});
+
+test("el token de renovación se cambia con el cliente de Google Business Profile, no con el de la Hoja de casos", async () => {
+  process.env.GBP_CLIENT_ID = "cliente-gbp";
+  process.env.GBP_CLIENT_SECRET = "secreto-gbp";
+  process.env.GOOGLE_CLIENT_ID = "cliente-hoja";
+  process.env.GOOGLE_CLIENT_SECRET = "secreto-hoja";
+  const pedidos: URLSearchParams[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_url: unknown, init?: { body?: unknown }) => {
+    pedidos.push(new URLSearchParams(String(init?.body)));
+    return new Response(JSON.stringify({ access_token: "acceso", expires_in: 3600 }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const vacio = (async () => new Response(JSON.stringify({ accounts: [] }), { status: 200 })) as unknown as typeof fetch;
+    assert.deepEqual(await listLocations("renovacion-unica-1", vacio), []);
+  } finally {
+    globalThis.fetch = original;
+    delete process.env.GOOGLE_CLIENT_ID;
+    delete process.env.GOOGLE_CLIENT_SECRET;
+  }
+  assert.equal(pedidos.length, 1);
+  assert.equal(pedidos[0].get("client_id"), "cliente-gbp");
+  assert.equal(pedidos[0].get("client_secret"), "secreto-gbp");
+  assert.equal(pedidos[0].get("grant_type"), "refresh_token");
 });
 
 test("conectar sedes: cada una es una cuenta en modo prueba, sin duplicar ni tocar las de otro cliente", async () => {

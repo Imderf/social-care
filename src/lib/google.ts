@@ -31,10 +31,15 @@ export class GoogleError extends Error {
   }
 }
 
-async function token(params: Record<string, string>) {
+// Cliente OAuth con el que se renueva el token: un token de renovación solo lo acepta el cliente que lo emitió.
+// Por defecto el de la Hoja de casos; Google Business Profile pasa el suyo (otro proyecto de Google Cloud).
+export type OAuthClient = { id: string; secret: string };
+const sheetClient = (): OAuthClient => ({ id: process.env.GOOGLE_CLIENT_ID!, secret: process.env.GOOGLE_CLIENT_SECRET! });
+
+async function token(params: Record<string, string>, client: OAuthClient = sheetClient()) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    body: new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID!, client_secret: process.env.GOOGLE_CLIENT_SECRET!, ...params }),
+    body: new URLSearchParams({ client_id: client.id, client_secret: client.secret, ...params }),
     signal: AbortSignal.timeout(20_000),
   });
   const json = await res.json().catch(() => ({}));
@@ -53,10 +58,10 @@ export async function exchangeGoogleCode(code: string) {
 
 // ponytail: caché en memoria del token de acceso (1 h); se pierde al reiniciar y se pide otro.
 const cache = new Map<string, { token: string; until: number }>();
-export async function accessToken(refreshToken: string) {
+export async function accessToken(refreshToken: string, client?: OAuthClient) {
   const hit = cache.get(refreshToken);
   if (hit && hit.until > Date.now()) return hit.token;
-  const t = await token({ refresh_token: refreshToken, grant_type: "refresh_token" });
+  const t = await token({ refresh_token: refreshToken, grant_type: "refresh_token" }, client);
   cache.set(refreshToken, { token: t.access_token, until: Date.now() + (t.expires_in - 120) * 1000 });
   return t.access_token;
 }
