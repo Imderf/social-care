@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { GoogleBusinessPanel } from "./google-business";
 import { Circle, CircleAlert, CircleCheck, FlaskConical, GraduationCap, Plug, Radio, UserCheck } from "lucide-react";
 import { db } from "@/lib/db";
 import { sign } from "@/lib/auth";
@@ -36,6 +37,9 @@ const ERRORS: Record<string, string> = {
   estado: "La conexión expiró o no venía de este panel. Vuelve a intentarlo.",
   ticket: "El permiso para conectar venció. Recarga esta página y vuelve a intentarlo.",
   meta: "Meta rechazó la conexión. Revisa que la cuenta tenga control total del portafolio y vuelve a intentarlo.",
+  google: "Google no dejó conectar la cuenta. Vuelve a intentarlo.",
+  google_cancelado: "Cancelaste la conexión con Google.",
+  google_config: "Falta configurar la conexión con Google en el servidor.",
 };
 
 async function CuentasContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -92,6 +96,11 @@ async function CuentasContent({ searchParams }: { searchParams: Promise<Record<s
           <CircleAlert size={16} aria-hidden className="shrink-0" /> {error}
         </p>
       )}
+      {sp.google === "conectado" && (
+        <p role="status" className="mb-6 flex items-center gap-2 rounded-lg bg-ok-soft px-4 py-3 text-[14px] text-ok">
+          <CircleCheck size={16} aria-hidden className="shrink-0" /> Google conectado. Marca abajo las sedes que quieres leer.
+        </p>
+      )}
       {!Number.isNaN(connected) && (
         <p role="status" className="mb-6 flex items-center gap-2 rounded-lg bg-ok-soft px-4 py-3 text-[14px] text-ok">
           <CircleCheck size={16} aria-hidden className="shrink-0" />
@@ -111,6 +120,12 @@ async function CuentasContent({ searchParams }: { searchParams: Promise<Record<s
           </div>
         ))}
       </section>
+
+      <div className="mb-4">
+        <Suspense fallback={null}>
+          <GoogleBusinessPanel clientId={client.id} />
+        </Suspense>
+      </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-3">
         <Panel title="Cuentas" className="lg:col-span-2" bodyClass={accounts.length ? "divide-y divide-line" : "p-5"}>
@@ -135,6 +150,7 @@ async function CuentasContent({ searchParams }: { searchParams: Promise<Record<s
                 ) : (
                   <Badge icon={FlaskConical}>Modo prueba: no publica</Badge>
                 )}
+                {a.platform === "gbp" && <Badge>Lee reseñas, no responde todavía</Badge>}
                 {a.platform === "ig" && a.status === "conectada" && (
                   Number(a.has_user_token) ? (
                     <Badge tone="ok">Lee los seguidores de quien comenta</Badge>
@@ -142,8 +158,15 @@ async function CuentasContent({ searchParams }: { searchParams: Promise<Record<s
                     <Badge tone="warn">Vuelve a conectarla para leer los seguidores de quien comenta</Badge>
                   )
                 )}
-                <span className="ml-auto text-[13px] text-ink-3">Último aviso de Meta: {ago(a.last_webhook_at)}</span>
-                {a.status === "desconectada" ? (
+                {a.platform !== "gbp" && <span className="ml-auto text-[13px] text-ink-3">Último aviso de Meta: {ago(a.last_webhook_at)}</span>}
+                {a.platform === "gbp" ? (
+                  <form action={disconnect} className="ml-auto">
+                    <input type="hidden" name="id" value={a.id} />
+                    <button type="submit" className="px-2 py-1.5 text-[13px] font-bold text-ink-3 hover:text-brand-ink" title="Deja de leer las reseñas de esta sede; lo que ya llegó se queda">
+                      Desconectar
+                    </button>
+                  </form>
+                ) : a.status === "desconectada" ? (
                   <span className="w-full text-[13px] text-ink-3">Desconectada: no recibe ni publica. Se vuelve a conectar con «Conectar con Facebook».</span>
                 ) : (
                 <>

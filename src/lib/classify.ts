@@ -38,15 +38,16 @@ export type Decision = { decision: "responder" | "escalar" | "ocultar"; proposed
 const HIDE = new Set(["politica_spam", "competencia", "datos_personales"]);
 const CONTENCION = "¡Hola {usuario}! Gracias por escribirnos, te contactamos por mensaje interno 💙";
 
-export async function loadMatrix(db: Pool, clientId: number) {
+// `scope`: la matriz de las redes (comentarios y DM) o la de las reseñas de Google. No se mezclan.
+export async function loadMatrix(db: Pool, clientId: number, scope: "redes" | "resenas" = "redes") {
   const [types] = await db.query<Row[]>(
-    "SELECT id, code, name, description, examples, autonomy, threshold, live_enabled, public_action, private_action, flow FROM case_types WHERE client_id = ? AND active ORDER BY position",
-    [clientId],
+    "SELECT id, code, name, description, examples, autonomy, threshold, live_enabled, public_action, private_action, flow FROM case_types WHERE client_id = ? AND active AND applies_to = ? ORDER BY position",
+    [clientId, scope],
   );
   const [templates] = await db.query<Row[]>(
-    `SELECT code, channel, body, when_to_use FROM templates t WHERE client_id = ? AND active
+    `SELECT code, channel, body, when_to_use FROM templates t WHERE client_id = ? AND active AND applies_to = ?
        AND version = (SELECT MAX(version) FROM templates WHERE client_id = t.client_id AND code = t.code AND channel = t.channel)`,
-    [clientId],
+    [clientId, scope],
   );
   const [knowledge] = await db.query<Row[]>(
     "SELECT topic, title, content FROM knowledge_items WHERE client_id = ? AND active AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)",
@@ -136,8 +137,8 @@ export const examplesInput = (learned: { code: string; text: string; reply: stri
   learned.length ? { ejemplos_del_equipo: learned.map((e) => ({ tipo: e.code, mensaje: String(e.text ?? "").slice(0, 280), respuesta: String(e.reply ?? "").slice(0, 600) })) } : {};
 
 // Enlaces, correos, dominios, teléfonos y @cuentas que aparecen en una respuesta o en un nombre.
-const DATA = /(?:https?:\/\/|www\.)[^\s)]+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+|\b[\w-]+(?:\.[\w-]+)*\.(?:co|com|net|org|ly|me|io|link|app|info|xyz|gov|edu)\b(?:\/[^\s)]*)?|\+?\d[\d\s().-]{6,}\d|@[\w.]{2,}/gi;
-const MAX_REPLY = 1000;
+export const DATA = /(?:https?:\/\/|www\.)[^\s)]+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+|\b[\w-]+(?:\.[\w-]+)*\.(?:co|com|net|org|ly|me|io|link|app|info|xyz|gov|edu)\b(?:\/[^\s)]*)?|\+?\d[\d\s().-]{6,}\d|@[\w.]{2,}/gi;
+export const MAX_REPLY = 1000;
 
 // Datos de la base que van por ciudad: el título es la ciudad.
 const CITY_TOPICS: Record<string, string> = { cobertura: "Cobertura de domicilios en", dispensacion: "Puntos de dispensación en" };
@@ -196,7 +197,7 @@ export function decide(type: Row | undefined, c: Classification, kind: "comentar
   return escalate(reasons.join(". "), priority, kind === "comentario" && c.es_queja_o_pregunta ? CONTENCION : null);
 }
 
-const fill = (text: string, platform: string, username: string | null) => {
+export const fill = (text: string, platform: string, username: string | null) => {
   const name = username?.trim() ?? "";
   // Facebook no siempre da el nombre de quien comenta: «¡Hola {usuario}!» queda «¡Hola!», no «¡Hola !».
   if (!name) return text.replace(/\s*\{(usuario|nombre)\}/g, "");
@@ -207,7 +208,7 @@ const fill = (text: string, platform: string, username: string | null) => {
 // puede repetir. `classifier` se cambia en las pruebas para no llamar a OpenAI.
 export async function classifyInteraction(db: Pool, interactionId: number, classifier: Classifier = openaiClassifier) {
   const [[i]] = await db.query<Row[]>(
-    `SELECT i.id, i.client_id, i.account_id, i.contact_id, i.post_id, i.received_at, i.kind, i.text_masked, i.decision, i.first_response_at, i.answered_by, i.analysis_only, i.source, a.platform, c.username,
+    `SELECT i.id, i.client_id, i.account_id, i.contact_id, i.post_id, i.received_at, i.kind, i.text_masked, i.decision, i.first_response_at, i.answered_by, i.analysis_only, i.source, i.rating, a.platform, c.username,
             cl.name AS client_name, p.origin AS post_origin, c.followers, c.verified
      FROM interactions i JOIN accounts a ON a.id = i.account_id JOIN clients cl ON cl.id = i.client_id
      LEFT JOIN posts p ON p.account_id = i.account_id AND p.meta_id = i.post_id
@@ -215,6 +216,8 @@ export async function classifyInteraction(db: Pool, interactionId: number, class
     [interactionId],
   );
   if (!i || i.decision) return null;
+  // Las reseñas de Google tienen su propia matriz y sus propias reglas (src/lib/reviews.ts).
+  if (i.kind === "resena") return (await import("./reviews.ts")).classifyReview(db, i, classifier);
 
   await refreshGraduation(db, i.client_id);
   const { types, templates, knowledge, learned, forbidden } = await loadMatrix(db, i.client_id);
@@ -382,7 +385,7 @@ async function previousConversation(db: Pool, i: Row) {
 
 // Si la respuesta lleva una palabra prohibida, la IA tiene un segundo intento sin ellas. Si insiste,
 // `banned` dice cuáles: el código no la deja salir sola y la persona la corrige.
-async function withoutForbidden(classifier: Classifier, req: Parameters<Classifier>[0], forbidden: Forbidden[]) {
+export async function withoutForbidden(classifier: Classifier, req: Parameters<Classifier>[0], forbidden: Forbidden[]) {
   const replies = (x: Classification) => `${x.respuesta_publica ?? ""}\n${x.respuesta_privada ?? ""}`;
   let c = await classifier(req);
   let banned = findForbidden(replies(c), forbidden);

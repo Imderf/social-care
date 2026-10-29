@@ -6,6 +6,7 @@ import { publishAction } from "../src/lib/publish.ts";
 import { backfillAccount } from "../src/lib/backfill.ts";
 import { completePost } from "../src/lib/posts.ts";
 import { dueSyncs, sendNotice, syncSheet } from "../src/lib/cases.ts";
+import { dueGbpSyncs, syncGbp } from "../src/lib/gbp.ts";
 
 // Un handler por tipo de trabajo. Un tipo sin handler se queda en la cola hasta que exista uno:
 // "classify" solo se toma cuando hay llave y modelo de OpenAI en el .env.
@@ -37,6 +38,11 @@ handlers.notice_send = async ({ notice_id }) => {
   const r = await sendNotice(db, Number(notice_id));
   console.log(r ? `aviso ${notice_id}: enviado${r.tag ? " como agente humano" : ""}` : `aviso ${notice_id}: ya estaba enviado o no está listo`);
 };
+// Reseñas de Google: traer las nuevas de las sedes conectadas del cliente (src/lib/gbp.ts).
+handlers.gbp_sync = async ({ client_id }) => {
+  const r = await syncGbp(db, Number(client_id));
+  console.log(!r ? `google cliente ${client_id}: sin conexión` : r.error ? `google cliente ${client_id}: ${r.error}` : `google cliente ${client_id}: ${r.created} reseñas nuevas en ${r.locations} sedes`);
+};
 if (process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL) {
   handlers.classify = async ({ interaction_id }) => {
     const r = await classifyInteraction(db, Number(interaction_id));
@@ -64,7 +70,22 @@ async function scheduleSheets() {
   }
 }
 
+// Cada 5 minutos: los clientes con sedes de Google conectadas (sin repetir el trabajo).
+let nextGbp = 0;
+async function scheduleGbp() {
+  if (Date.now() < nextGbp) return;
+  nextGbp = Date.now() + 60_000;
+  for (const clientId of await dueGbpSyncs(db)) {
+    await db.query(
+      `INSERT INTO jobs (type, payload) SELECT 'gbp_sync', JSON_OBJECT('client_id', ?) FROM DUAL
+       WHERE NOT EXISTS (SELECT 1 FROM jobs WHERE type = 'gbp_sync' AND status IN ('pending', 'running') AND JSON_EXTRACT(payload, '$.client_id') = ?)`,
+      [clientId, clientId],
+    );
+  }
+}
+
 while (running) {
+  await scheduleGbp().catch((e) => console.error(`turnos de Google: ${(e as Error).message}`));
   await scheduleSheets().catch((e) => console.error(`turnos de la Hoja: ${(e as Error).message}`));
   const jobs = await claimJobs(db, Object.keys(handlers));
 

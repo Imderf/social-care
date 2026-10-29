@@ -177,15 +177,28 @@ export function ProfileBadges({ tier, accountType, important }: { tier?: Tier | 
   );
 }
 
-export function Channel({ platform, kind }: { platform: string; kind?: string }) {
+export function Channel({ platform, kind, rating }: { platform: string; kind?: string; rating?: number | null }) {
   const ig = platform === "ig";
+  const google = platform === "gbp";
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-ink-2">
-      <span aria-hidden className={`grid size-5 place-items-center rounded-md text-[10px] font-bold text-white ${ig ? "bg-[#c13584]" : "bg-[#1877f2]"}`}>
-        {ig ? "IG" : "f"}
+      <span aria-hidden className={`grid size-5 place-items-center rounded-md text-[10px] font-bold text-white ${google ? "bg-[#4285f4]" : ig ? "bg-[#c13584]" : "bg-[#1877f2]"}`}>
+        {google ? "G" : ig ? "IG" : "f"}
       </span>
-      {ig ? "Instagram" : "Facebook"}
-      {kind && <span className="text-ink-3">· {kind === "dm" ? "DM" : "comentario"}</span>}
+      {google ? "Google" : ig ? "Instagram" : "Facebook"}
+      {kind && <span className="text-ink-3">· {kind === "dm" ? "DM" : kind === "resena" ? "reseña" : "comentario"}</span>}
+      {rating ? <Stars rating={rating} /> : null}
+    </span>
+  );
+}
+
+// Las estrellas de una reseña de Google.
+export function Stars({ rating }: { rating: number | null | undefined }) {
+  if (!rating) return null;
+  return (
+    <span className="inline-flex items-center text-[13px] leading-none text-[#b8860b]" role="img" aria-label={`${rating} de 5 estrellas`}>
+      {"★".repeat(rating)}
+      <span className="text-line-strong">{"★".repeat(5 - rating)}</span>
     </span>
   );
 }

@@ -22,6 +22,7 @@ async function load(db: Pool, clientId: number, escalationId: number) {
 
 // Por qué no se puede enviar desde la plataforma, o null si se puede.
 export function cannotSend(e: { mode: string; analysis_only: number | boolean; kind: string; window_expires_at: Date | null; post_origin?: string | null; notice_id?: number | null }) {
+  if (e.kind === "resena") return "Responder reseñas de Google desde la plataforma todavía no está disponible: respóndela desde Google Business Profile.";
   if (e.post_origin === "anuncio" || e.post_origin === "pautada") {
     return `Es un comentario en ${e.post_origin === "anuncio" ? "un anuncio" : "una publicación pautada"}: no se responde desde la plataforma. Respóndelo desde Meta Business Suite o el Administrador de anuncios.`;
   }

@@ -111,7 +111,7 @@ async function InteraccionesContent({ searchParams }: { searchParams: Promise<Re
                         ) : (
                           r.username && <span className="font-bold">{personName(r as any)}</span>
                         )}
-                        <Channel platform={r.platform} kind={r.kind} />
+                        <Channel platform={r.platform} kind={r.kind} rating={r.rating} />
                         <OriginBadge origin={r.post_origin} />
                       </p>
                       <p className="mt-1 line-clamp-3 text-ink-2">{r.text_masked}</p>
