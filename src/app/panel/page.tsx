@@ -91,7 +91,7 @@ async function ResumenContent({ searchParams }: { searchParams: Promise<Record<s
         <Stat label="Recibidos" value={c.received}>
           <Delta now={c.received} before={p.received} goodWhenUp={null} />
           <p className="mt-1 text-[13px] text-ink-3">
-            {d.channels.ig} Instagram y {d.channels.fb} Facebook · {d.channels.dm} fueron DM
+            {d.channels.ig} Instagram y {d.channels.fb} Facebook · {d.channels.dm} fueron DM{d.channels.gbp ? ` · ${d.channels.gbp} reseñas de Google` : ""}
           </p>
         </Stat>
         <Stat label={live ? "Respondidos por la IA" : "La IA respondería sola"} value={`${share} %`}>
@@ -256,7 +256,7 @@ async function ResumenContent({ searchParams }: { searchParams: Promise<Record<s
                     <Link href={`/panel/bandeja?caso=${e.id}`} className="block px-5 py-3 hover:bg-canvas/70">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={pr.tone}>{pr.label}</Badge>
-                        <Channel platform={e.platform} kind={e.kind} />
+                        <Channel platform={e.platform} kind={e.kind} rating={e.rating} />
                         <span className="ml-auto text-[12px] text-ink-3">{ago(e.created_at)}</span>
                       </div>
                       <p className="mt-1.5 line-clamp-2 text-[14px] text-ink-2">{e.text_masked}</p>

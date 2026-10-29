@@ -35,9 +35,9 @@ export async function createClient(db: Pool, name: string, copyFrom: number | nu
   const [r] = await db.query<any>("INSERT INTO clients (name) VALUES (?)", [name]);
   const id = r.insertId as number;
   if (copyFrom) {
-    const cols = "position, code, name, description, examples, autonomy, threshold, public_action, private_action, record_target, alert, flow, active";
+    const cols = "position, code, name, description, examples, autonomy, threshold, public_action, private_action, record_target, alert, flow, active, applies_to";
     await db.query(`INSERT INTO case_types (client_id, ${cols}) SELECT ?, ${cols} FROM case_types WHERE client_id = ?`, [id, copyFrom]);
-    await db.query("INSERT INTO templates (client_id, code, name, channel, body, when_to_use) SELECT ?, code, name, channel, body, when_to_use FROM templates WHERE client_id = ? AND active", [id, copyFrom]);
+    await db.query("INSERT INTO templates (client_id, code, name, channel, body, when_to_use, applies_to) SELECT ?, code, name, channel, body, when_to_use, applies_to FROM templates WHERE client_id = ? AND active", [id, copyFrom]);
     await db.query("INSERT INTO knowledge_items (client_id, topic, title, content, valid_until) SELECT ?, topic, title, content, valid_until FROM knowledge_items WHERE client_id = ? AND active", [id, copyFrom]);
     await db.query("INSERT INTO lists (client_id, kind, value, note) SELECT ?, kind, value, note FROM lists WHERE client_id = ?", [id, copyFrom]);
     // Los niveles de influencia también son configuración.
@@ -177,10 +177,10 @@ export async function getDashboard(db: Pool, clientId: number, days: number, now
     return { median: percentile(secs, 0.5), p90: percentile(secs, 0.9), count: secs.length };
   };
 
-  const channels = { fb: 0, ig: 0, comentario: 0, dm: 0 };
+  const channels = { fb: 0, ig: 0, gbp: 0, comentario: 0, dm: 0, resena: 0 };
   for (const r of current) {
-    channels[r.platform as "fb" | "ig"]++;
-    channels[r.kind as "comentario" | "dm"]++;
+    channels[r.platform as "fb" | "ig" | "gbp"]++;
+    channels[r.kind as "comentario" | "dm" | "resena"]++;
   }
 
   return {
@@ -383,7 +383,7 @@ export const disconnectAccount = (db: Pool, clientId: number, id: number) =>
   db.query("UPDATE accounts SET status = 'desconectada' WHERE id = ? AND client_id = ?", [id, clientId]);
 
 export const listOpenEscalations = (db: Pool, clientId: number) =>
-  all(db, `SELECT e.id, e.reason, e.priority, e.suggested_draft, e.created_at, i.id AS interaction_id, i.contact_id, i.kind,
+  all(db, `SELECT e.id, e.reason, e.priority, e.suggested_draft, e.created_at, i.id AS interaction_id, i.contact_id, i.kind, i.rating,
                   i.text_masked, i.permalink, i.window_expires_at, i.confidence, i.mode, i.proposed_reply, i.analysis_only, a.platform,
                   a.mode AS account_mode, a.name AS account, ct.name AS case_type, ct.public_action, c.username, c.followers, c.verified, c.account_type, c.bio,
                   IF(n.id IS NULL, x.type, 'dm') AS action_type, IF(n.id IS NULL, x.status, IF(n.delivery IN ('enviar', 'enviando'), 'pendiente', NULL)) AS action_status,
@@ -401,7 +401,7 @@ export const listOpenEscalations = (db: Pool, clientId: number) =>
 
 // Otras interacciones del mismo usuario, con lo que la IA propuso y lo que respondió el equipo.
 export const listContactHistory = (db: Pool, clientId: number, contactId: number, excludeId: number, limit = 6) =>
-  all(db, `SELECT i.id, i.kind, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.human_reply,
+  all(db, `SELECT i.id, i.kind, i.rating, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.human_reply,
                   i.answered_by, i.received_at, a.platform, ct.name AS case_type, v.verdict,
                   (SELECT x.status FROM actions x WHERE x.interaction_id = i.id AND x.type = 'ocultar' ORDER BY x.id DESC LIMIT 1) AS hide_status
            FROM interactions i
@@ -434,7 +434,7 @@ export const getContact = async (db: Pool, clientId: number, id: number) =>
 // Todo lo que una persona ha escrito a las cuentas del cliente, comentarios y DM, con lo que hizo la
 // IA, lo que respondió el equipo, la publicación donde comentó y su caso en la bandeja.
 export const listContactTimeline = (db: Pool, clientId: number, contactId: number, limit = 300) =>
-  all(db, `SELECT i.id, i.kind, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.human_reply,
+  all(db, `SELECT i.id, i.kind, i.rating, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.human_reply,
                   i.answered_by, i.confidence, i.sentiment, i.received_at, i.first_response_at, i.permalink, i.analysis_only,
                   a.platform, a.name AS account, ct.name AS case_type, v.verdict,
                   p.caption AS post_caption, p.permalink AS post_permalink, p.type AS post_type, p.origin AS post_origin,
@@ -462,7 +462,7 @@ export const INTERACTION_FILTERS = {
 } as const;
 
 export const listInteractions = (db: Pool, clientId: number, filter: keyof typeof INTERACTION_FILTERS = "todas", search = "", limit = 100) =>
-  all(db, `SELECT i.id, i.kind, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.human_reply,
+  all(db, `SELECT i.id, i.kind, i.rating, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.human_reply,
                   i.answered_by, i.confidence, i.received_at, i.first_response_at, i.permalink, a.platform,
                   ct.name AS case_type, c.username, IF(c.meta_user_id LIKE 'sin\\_id:%', NULL, c.id) AS contact_id, v.verdict, po.origin AS post_origin,
                   (SELECT x.status FROM actions x WHERE x.interaction_id = i.id AND x.type = 'ocultar' ORDER BY x.id DESC LIMIT 1) AS hide_status
@@ -488,7 +488,7 @@ export const PROPOSAL_FILTERS = {
 } as const;
 
 export const listProposals = (db: Pool, clientId: number, filter: keyof typeof PROPOSAL_FILTERS = "pendientes", limit = 40) =>
-  all(db, `SELECT i.id, i.kind, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.ai_redrafts, i.human_reply,
+  all(db, `SELECT i.id, i.kind, i.rating, i.text_masked, i.decision, i.mode, i.proposed_reply, i.proposed_template, i.ai_redrafts, i.human_reply,
                   i.answered_by, i.confidence, i.received_at, i.first_response_at, a.platform, ct.name AS case_type,
                   ct.public_action, ct.private_action, c.username, v.verdict, v.note, v.corrected_reply, a.mode AS account_mode, x.status AS action_status, i.source,
                   (a.mode = 'en_vivo' AND i.answered_by IS NULL AND NOT i.analysis_only) AS can_publish

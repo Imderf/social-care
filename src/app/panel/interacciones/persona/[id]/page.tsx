@@ -109,7 +109,7 @@ async function PersonaContent({ params }: { params: Promise<{ id: string }> }) {
                     <article className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 py-3">
                       <p className="flex flex-wrap items-center gap-2 text-[13px] text-ink-3">
                         <span className="font-bold text-ink-2">{hourFmt.format(new Date(i.received_at))}</span>
-                        <Channel platform={i.platform} kind={i.kind} />
+                        <Channel platform={i.platform} kind={i.kind} rating={i.rating} />
                         <span>· {i.case_type ?? "Sin clasificar"}</span>
                         {d && (
                           <Badge tone={d.tone} icon={d.icon}>

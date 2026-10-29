@@ -190,6 +190,8 @@ export async function setLearningDays(db: Pool, clientId: number, days: number) 
 // Prueba ↔ asistido. Al entrar a asistido arranca el periodo de aprendizaje; al volver a prueba se
 // reinicia, y los tipos que respondían solos vuelven a pedir aprobación.
 export async function setAccountMode(db: Pool, clientId: number, accountId: number, mode: "prueba" | "en_vivo") {
+  // Responder reseñas de Google todavía no existe: esas cuentas se quedan en prueba.
+  if (mode === "en_vivo" && (await db.query<any[]>("SELECT 1 FROM accounts WHERE id = ? AND client_id = ? AND platform = 'gbp'", [accountId, clientId]))[0].length) return;
   await db.query(
     `UPDATE accounts SET mode = ?, live_since = IF(? = 'en_vivo', COALESCE(live_since, CURRENT_TIMESTAMP(3)), NULL)
      WHERE id = ? AND client_id = ?`,

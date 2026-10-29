@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "node --env-file-if-exists=.env db/migrate.ts",
     "db:seed:cafam": "node --env-file-if-exists=.env db/seed-cafam.ts",
+    "db:seed:resenas": "node --env-file-if-exists=.env db/seed-resenas.ts",
     "usuario": "node --env-file-if-exists=.env scripts/usuario.ts",
     "db:seed:demo": "node --env-file-if-exists=.env db/seed-demo.ts"
   },

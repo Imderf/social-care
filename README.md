@@ -11,6 +11,7 @@ Plataforma multicliente de Ogilvy Colombia para atender los comentarios y mensaj
 - **Solo responde lo orgánico:** los comentarios en anuncios o en publicaciones pautadas quedan para análisis y llegan como alerta a la bandeja.
 - **Hoja de casos:** se conecta con Google y lee la Hoja de cálculo donde el equipo registra los casos; cuando un caso cambia a un estado que avisa, le escribe a la persona por DM según la ventana de Meta.
 - **Panel web** con resumen e indicadores, bandeja, pruebas, interacciones y ficha por persona, editor de la matriz, plantillas con versiones, base de conocimiento, palabras prohibidas, perfiles e influenciadores, cuentas conectadas y clientes.
+- **Reseñas de Google:** un botón «Conectar con Google» detecta solas las fichas de la persona; la plataforma lee las reseñas de las sedes que se elijan, las clasifica con su propia matriz y propone la respuesta. Por ahora solo en modo prueba: no responde en Google.
 - **Usuarios y roles:** la administración crea usuarios con contraseña temporal, restablece contraseñas, desactiva cuentas y asigna clientes. Tres roles: administrador, operador (Bandeja) y verificador (Pruebas).
 
 ## Cómo funciona
@@ -76,6 +77,7 @@ Están todas en `.env.example`. El `.env` nunca se sube al repositorio.
 | `APP_BASE_URL`, `PANEL_URL` | Dominio público y dirección del panel |
 | `PANEL_PUBLICO` | `1` para servir el panel en el dominio público, detrás de su login. Sin ella, el dominio solo muestra las páginas legales, el webhook y la conexión con Meta |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_API_KEY`, `GOOGLE_PROJECT_NUMBER` | Hoja de casos: inicio de sesión con Google y selector de la Hoja |
+| `GBP_CLIENT_ID`, `GBP_CLIENT_SECRET` | Google Business Profile (reseñas): cliente OAuth del proyecto de Google Cloud con acceso a la API; URL de regreso `PANEL_URL/api/gbp/callback` |
 
 ## Comandos
 
@@ -87,6 +89,7 @@ npm run worker         # worker
 npm run db:migrate     # aplica las migraciones pendientes
 npm run db:seed:demo   # cliente demo con datos de ejemplo
 npm run db:seed:cafam  # matriz, plantillas y enlaces del primer cliente
+npm run db:seed:resenas -- <cliente>   # matriz y plantillas v1 de reseñas de Google
 npm run usuario -- <usuario> [nombre]   # crea un administrador o cambia la contraseña de un usuario (el primero; los demás se crean en /panel/usuarios)
 npm test               # pruebas (necesitan la base de TEST_DATABASE_URL)
 npm run typecheck

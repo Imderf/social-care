@@ -153,7 +153,7 @@ function ProposalCard({ p, templateNames, filter, banned, error }: CardProps) {
             <div className="min-w-0">
               <p className="truncate text-[14px] font-bold">{personName(p as any)}</p>
               <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-ink-3">
-                <Channel platform={p.platform} kind={p.kind} /> · {ago(p.received_at)}
+                <Channel platform={p.platform} kind={p.kind} rating={p.rating} /> · {ago(p.received_at)}
               </p>
             </div>
           </div>

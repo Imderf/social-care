@@ -79,7 +79,7 @@ async function BandejaContent({ searchParams }: { searchParams: Params }) {
                       </div>
                       <p className="mt-1.5 line-clamp-2 text-[14px] text-ink-2">{e.text_masked}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <Channel platform={e.platform} kind={e.kind} />
+                        <Channel platform={e.platform} kind={e.kind} rating={e.rating} />
                         {w && (
                           <span className={`inline-flex items-center gap-1 text-[12px] ${w.urgent ? "font-bold text-brand-ink" : "text-ink-3"}`}>
                             {w.urgent ? <TriangleAlert size={13} aria-hidden /> : <Clock size={13} aria-hidden />} {w.short}
@@ -119,7 +119,7 @@ async function CaseDetail({ e, clientId, backHref, error }: { e: Escalation; cli
           <ArrowLeft size={15} aria-hidden /> Lista
         </Link>
         <Badge tone={PRIORITY[e.priority as Priority].tone}>{PRIORITY[e.priority as Priority].label}</Badge>
-        <Channel platform={e.platform} kind={e.kind} />
+        <Channel platform={e.platform} kind={e.kind} rating={e.rating} />
         <OriginBadge origin={e.post_origin} />
         {e.case_type && <span className="text-[14px] text-ink-2">· {e.case_type}</span>}
       </header>
