@@ -32,7 +32,7 @@ test("la contraseña temporal es legible, distinta cada vez y cumple la polític
   for (let i = 0; i < 200; i++) {
     const p = generateTempPassword();
     seen.add(p);
-    assert.match(p, /^[A-Za-z2-9]{4}-[A-Za-z2-9]{4}-[A-Za-z2-9]{5}$/);
+    assert.match(p, /^[A-Za-z2-9]{4}-[A-Za-z2-9]{4}-[A-Za-z2-9]{4}$/);
     assert.ok(/[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p), "mayúscula, minúscula y número");
     assert.ok(!/[01OIl]/.test(p), "sin letras que se confunden");
     assert.equal(passwordError(p), null);

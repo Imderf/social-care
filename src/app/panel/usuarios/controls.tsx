@@ -32,7 +32,7 @@ export function Credentials({ credentials, panelUrl, title }: { credentials: { u
         <dt className="text-ink-3">Usuario</dt>
         <dd className="font-bold">{credentials.username}</dd>
         <dt className="text-ink-3">Contraseña temporal</dt>
-        <dd className="font-mono text-[15px] font-bold tracking-wide select-all">{credentials.password}</dd>
+        <dd className="font-mono text-[15px] font-bold tracking-wide whitespace-nowrap select-all">{credentials.password}</dd>
       </dl>
       <p className="text-[13px] text-ink-2">Se muestra una sola vez y no queda guardada: cópiala ahora. La persona tendrá que cambiarla al ingresar.</p>
       <button
