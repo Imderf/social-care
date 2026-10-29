@@ -1,13 +1,13 @@
 import type { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import { ROLES, type Role } from "./permissions.ts";
-import { USERNAME_HELP, USERNAME_RE, clearFailures, generateTempPassword, hashPassword, passwordError, sign, verify, verifyPassword } from "./auth.ts";
+import { USERNAME_HELP, USERNAME_RE, clearFailures, generateTempPassword, hashPassword, passwordError, signShort, verify, verifyPassword, verifyShort } from "./auth.ts";
 
 // Administración de usuarios del panel: crear, editar, restablecer la contraseña, desactivar, desbloquear
 // y asignar clientes. Los mensajes de UserError se le muestran tal cual a la persona que administra.
 // Reglas: siempre queda al menos un administrador activo, y nadie se desactiva, se restablece ni se
 // quita el rol de administrador a sí mismo (para eso están Mi cuenta y otro administrador).
 // Las contraseñas temporales no se guardan ni se registran: se devuelven una sola vez.
-// Enlace de invitación: la persona crea ella misma su contraseña. El enlace es un texto firmado con la versión de sesión
+// Enlace de invitación: la persona crea ella misma su contraseña. El enlace es un código corto firmado con la versión de sesión
 // del usuario, sin tabla: sirve una vez (al guardar la contraseña la versión sube), vence a los 7 días y uno nuevo anula
 // el anterior. Una cuenta sin contraseña (`password_hash` NULL) está «pendiente» y no puede ingresar.
 
@@ -72,7 +72,14 @@ async function tx<T>(db: Pool, fn: (c: PoolConnection) => Promise<T>) {
 }
 
 const INVITATION_SECONDS = 7 * 24 * 3600;
-const invitationToken = (id: number, version: number) => sign("invitacion", [id, version], INVITATION_SECONDS);
+const invitationToken = (id: number, version: number) => signShort("invitacion", id, version, INVITATION_SECONDS);
+// Los enlaces de antes (id.versión.vence.firma) siguen valiendo hasta que venzan.
+const readInvitation = (token: string | null | undefined): [number, number] | null => {
+  const short = verifyShort("invitacion", token);
+  if (short) return short;
+  const long = verify("invitacion", token);
+  return long ? [Number(long[0]), Number(long[1])] : null;
+};
 
 async function logEvent(c: Pool | PoolConnection, actorId: number | null, targetId: number | null, action: string, detail: string | null = null) {
   await c.query("INSERT INTO user_events (actor_id, target_id, action, detail) VALUES (?, ?, ?, ?)", [actorId, targetId, action, detail?.slice(0, 255) ?? null]);
@@ -207,13 +214,13 @@ const BAD_LINK = "Este enlace ya se usó o venció. Pídele uno nuevo a quien ad
 
 // La persona dueña de un enlace vigente, o null si el enlace es inválido, venció, ya se usó o la cuenta no está pendiente.
 async function pendingFor(c: Pool | PoolConnection, token: string | null | undefined, lock = false) {
-  const parts = verify("invitacion", token);
+  const parts = readInvitation(token);
   if (!parts) return null;
   const [[u]] = await c.query<Row[]>(
     `SELECT id, username, name, active, session_version, password_hash IS NULL AS pending FROM users WHERE id = ?${lock ? " FOR UPDATE" : ""}`,
-    [Number(parts[0])],
+    [parts[0]],
   );
-  return u && u.active && u.pending && Number(u.session_version) === Number(parts[1]) ? u : null;
+  return u && u.active && u.pending && Number(u.session_version) === parts[1] ? u : null;
 }
 
 export async function invitationInfo(db: Pool, token: string | null | undefined) {

@@ -4,7 +4,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import type { Pool, RowDataPacket } from "mysql2/promise";
-import { login, saveUser, sessionValid, sign, startSession } from "../src/lib/auth.ts";
+import { login, saveUser, sessionValid, sign, signShort, startSession } from "../src/lib/auth.ts";
 import { createClient } from "../src/lib/data.ts";
 import { acceptInvitation, createUser, invitationInfo, inviteUser, listUserEvents, listUsers, setActive } from "../src/lib/users.ts";
 import { freshTestDb } from "./test-db.ts";
@@ -45,10 +45,18 @@ test("el enlace solo vale si es el suyo: firmado, de invitación, vigente y de u
   const r = await nueva("pablo.botero", { role: "verificador" });
   assert.equal(await invitationInfo(db, undefined), null);
   assert.equal(await invitationInfo(db, "basura"), null);
-  assert.equal(await invitationInfo(db, r.token!.replace(/^\d+\./, "999.")), null, "cambiar de persona rompe la firma");
+  assert.match(r.token!, /^[0-9a-z]+-[0-9a-z]+-[0-9a-z]+-.{16}$/, "código corto");
+  assert.ok(r.token!.length <= 40, `el enlace es corto (${r.token!.length})`);
+  assert.equal(await invitationInfo(db, r.token!.replace(/^[0-9a-z]+-/, "zz-")), null, "cambiar de persona rompe la firma");
+  assert.equal(await invitationInfo(db, r.token!.slice(0, -1) + (r.token!.endsWith("a") ? "b" : "a")), null, "cambiar la firma la rompe");
   assert.equal(await invitationInfo(db, sign("sesion", [r.id, 1], 600)), null, "una sesión no es una invitación");
-  assert.equal(await invitationInfo(db, sign("invitacion", [r.id, 1], 60, Date.now() - 3_600_000)), null, "vencido");
-  assert.equal(await invitationInfo(db, sign("invitacion", [r.id, 7], 600)), null, "versión que no es la de la cuenta");
+  assert.equal(await invitationInfo(db, signShort("invitacion", r.id, 1, 60, Date.now() - 7_200_000)), null, "vencido");
+  assert.equal(await invitationInfo(db, signShort("invitacion", r.id, 7, 600)), null, "versión que no es la de la cuenta");
+  assert.equal(await invitationInfo(db, signShort("sesion", r.id, 1, 600)), null, "otro propósito");
+  // los enlaces largos de antes siguen valiendo hasta que venzan
+  assert.equal(await invitationInfo(db, sign("invitacion", [r.id, 1], 60, Date.now() - 3_600_000)), null, "largo vencido");
+  assert.equal(await invitationInfo(db, sign("invitacion", [r.id, 7], 600)), null, "largo con otra versión");
+  assert.ok(await invitationInfo(db, sign("invitacion", [r.id, 1], 600)), "largo vigente");
   assert.ok(await invitationInfo(db, r.token));
 });
 

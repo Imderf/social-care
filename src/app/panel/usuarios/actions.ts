@@ -10,7 +10,7 @@ import type { FormState } from "./types";
 // Solo administradores (currentUser("usuarios") los revisa en cada acción). Los errores de reglas
 // (último administrador, usuario repetido…) vuelven al formulario; cualquier otro error sube.
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "");
-const linkFor = (token: string) => `${panelUrl().replace(/\/$/, "")}/crear-clave?t=${token}`;
+const linkFor = (token: string) => `${panelUrl().replace(/\/$/, "")}/c/${token}`;
 const echo = (fd: FormData) => Object.fromEntries(["name", "username", "email", "role"].map((k) => [k, text(fd, k)]));
 const clientIds = (fd: FormData) => fd.getAll("clients").map(Number);
 function fail(e: unknown, fd?: FormData): FormState {

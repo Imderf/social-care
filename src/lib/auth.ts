@@ -50,6 +50,22 @@ export function verify(purpose: string, token: string | null | undefined, now?: 
   return Number(parts.pop()) > (now ?? Date.now()) ? parts : null;
 }
 
+// Código corto para los enlaces que se mandan por correo: "<id>-<versión>-<hora en que vence>-<firma>", los tres números en
+// base 36. La firma (96 bits) cubre el propósito y los números, y el enlace completo queda de unos 40 caracteres.
+export function signShort(purpose: string, id: number, version: number, ttlSeconds: number, now = Date.now()) {
+  const body = [id, version, Math.floor((now + ttlSeconds * 1000) / 3_600_000)].map((n) => n.toString(36)).join("-");
+  return `${body}-${mac(purpose, body).slice(0, 16)}`;
+}
+
+export function verifyShort(purpose: string, code: string | null | undefined, now = Date.now()): [id: number, version: number] | null {
+  const m = /^([0-9a-z]{1,8})-([0-9a-z]{1,6})-([0-9a-z]{1,8})-(.{16})$/.exec(code ?? "");
+  if (!m) return null;
+  const want = Buffer.from(mac(purpose, `${m[1]}-${m[2]}-${m[3]}`).slice(0, 16));
+  const got = Buffer.from(m[4]);
+  if (got.length !== want.length || !timingSafeEqual(got, want)) return null;
+  return parseInt(m[3], 36) * 3_600_000 > now ? [parseInt(m[1], 36), parseInt(m[2], 36)] : null;
+}
+
 // Solo la firma (sirve en el proxy, sin base). Las páginas y acciones usan sessionValid.
 export const sessionUser = (token?: string) => Number(verify("sesion", token)?.[0]) || null;
 
