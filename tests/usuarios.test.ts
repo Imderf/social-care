@@ -14,6 +14,10 @@ let db: Pool;
 let admin = 0;
 let cafam = 0;
 let otro = 0;
+const crearTemporal = async (input: Record<string, unknown>) => {
+  const r = await createUser(db, admin, { ...input, mode: "temporal" });
+  return { ...r, password: r.password! };
+};
 const rows = async (q: string, p: unknown[] = []) => (await db.query<RowDataPacket[]>(q, p))[0];
 
 before(async () => {
@@ -43,7 +47,7 @@ test("la contraseña temporal es legible, distinta cada vez y cumple la polític
 });
 
 test("crear: queda con la contraseña temporal, debe cambiarla y solo se guarda su hash", async () => {
-  const r = await createUser(db, admin, { username: "Maria.Perez", name: "  María   Pérez ", email: "Maria@Ogilvy.com", role: "operador", clientIds: [cafam] });
+  const r = await crearTemporal({ username: "Maria.Perez", name: "  María   Pérez ", email: "Maria@Ogilvy.com", role: "operador", clientIds: [cafam] });
   assert.equal(r.username, "maria.perez");
   const [u] = await rows("SELECT * FROM users WHERE id = ?", [r.id]);
   assert.equal(u.name, "María Pérez");
@@ -64,19 +68,19 @@ test("crear: queda con la contraseña temporal, debe cambiarla y solo se guarda 
 
 test("crear: valida usuario, nombre, correo, rol y clientes, y no repite usuario ni correo", async () => {
   const base = { username: "ana.ruiz", name: "Ana Ruiz", email: "", role: "verificador", clientIds: [cafam] };
-  await assert.rejects(createUser(db, admin, { ...base, username: "a" }), /3 a 60/);
-  await assert.rejects(createUser(db, admin, { ...base, name: "  " }), /nombre/);
-  await assert.rejects(createUser(db, admin, { ...base, email: "no-es-correo" }), /correo/);
-  await assert.rejects(createUser(db, admin, { ...base, role: "superadmin" }), /rol/);
-  await assert.rejects(createUser(db, admin, { ...base, clientIds: [99999] }), /ya no existe/);
+  await assert.rejects(crearTemporal({ ...base, username: "a" }), /3 a 60/);
+  await assert.rejects(crearTemporal({ ...base, name: "  " }), /nombre/);
+  await assert.rejects(crearTemporal({ ...base, email: "no-es-correo" }), /correo/);
+  await assert.rejects(crearTemporal({ ...base, role: "superadmin" }), /rol/);
+  await assert.rejects(crearTemporal({ ...base, clientIds: [99999] }), /ya no existe/);
   assert.equal((await rows("SELECT COUNT(*) AS n FROM users WHERE username = 'ana.ruiz'"))[0].n, 0, "una falla no deja la persona a medias");
-  await createUser(db, admin, base);
-  await assert.rejects(createUser(db, admin, base), /mismo usuario|ese usuario/);
-  await assert.rejects(createUser(db, admin, { ...base, username: "ana.ruiz2", email: "maria@ogilvy.com" }), /ese correo/);
+  await crearTemporal(base);
+  await assert.rejects(crearTemporal(base), /mismo usuario|ese usuario/);
+  await assert.rejects(crearTemporal({ ...base, username: "ana.ruiz2", email: "maria@ogilvy.com" }), /ese correo/);
 });
 
 test("los administradores no llevan clientes asignados: ven todos; los demás, solo los suyos", async () => {
-  const adm = await createUser(db, admin, { username: "otro.admin", name: "Otro Admin", role: "admin", clientIds: [cafam] });
+  const adm = await crearTemporal({ username: "otro.admin", name: "Otro Admin", role: "admin", clientIds: [cafam] });
   assert.deepEqual(await memberClientIds(db, adm.id), []);
   const maria = Number((await rows("SELECT id FROM users WHERE username = 'maria.perez'"))[0].id);
   assert.deepEqual((await listClientsOf(db, maria)).map((c) => c.id), [cafam]);
@@ -98,7 +102,7 @@ test("los administradores no llevan clientes asignados: ven todos; los demás, s
 });
 
 test("restablecer: contraseña temporal nueva, sesiones cerradas, bloqueo quitado y debe cambiarla", async () => {
-  const r = await createUser(db, admin, { username: "luis.gomez", name: "Luis Gómez", role: "operador", clientIds: [cafam] });
+  const r = await crearTemporal({ username: "luis.gomez", name: "Luis Gómez", role: "operador", clientIds: [cafam] });
   await changeOwnPassword(db, r.id, r.password, "mi-clave-propia-1", "mi-clave-propia-1");
   assert.equal((await loadAccess(db, r.id))!.mustChange, false);
   const token = await startSession(db, r.id);
@@ -116,7 +120,7 @@ test("restablecer: contraseña temporal nueva, sesiones cerradas, bloqueo quitad
 });
 
 test("cambiar mi contraseña: pide la actual, la nueva distinta y larga, cierra las demás sesiones", async () => {
-  const r = await createUser(db, admin, { username: "pedro.leal", name: "Pedro Leal", role: "verificador", clientIds: [cafam] });
+  const r = await crearTemporal({ username: "pedro.leal", name: "Pedro Leal", role: "verificador", clientIds: [cafam] });
   const viejo = await startSession(db, r.id);
   await assert.rejects(changeOwnPassword(db, r.id, "otra", "nueva-clave-12", "nueva-clave-12"), /actual no coincide/);
   await assert.rejects(changeOwnPassword(db, r.id, r.password, "nueva-clave-12", "distinta-clave"), /no coinciden/);
@@ -131,7 +135,7 @@ test("cambiar mi contraseña: pide la actual, la nueva distinta y larga, cierra 
 });
 
 test("desactivar: no entra, pierde la sesión al instante y se puede reactivar sin perder sus datos", async () => {
-  const r = await createUser(db, admin, { username: "sofia.mora", name: "Sofía Mora", role: "operador", clientIds: [cafam] });
+  const r = await crearTemporal({ username: "sofia.mora", name: "Sofía Mora", role: "operador", clientIds: [cafam] });
   const token = await startSession(db, r.id);
   await setActive(db, admin, r.id, false);
   assert.equal(await sessionValid(db, token), null);
@@ -160,7 +164,7 @@ test("siempre queda un administrador activo y nadie se quita el acceso a sí mis
 });
 
 test("quitar el bloqueo y el registro de administración, sin contraseñas", async () => {
-  const r = await createUser(db, admin, { username: "juan.rios", name: "Juan Ríos", role: "operador", clientIds: [cafam] });
+  const r = await crearTemporal({ username: "juan.rios", name: "Juan Ríos", role: "operador", clientIds: [cafam] });
   for (let i = 0; i < 5; i++) await login(db, "juan.rios", "mala");
   assert.equal(await login(db, "juan.rios", r.password), "bloqueado");
   await unlockUser(db, admin, r.id);

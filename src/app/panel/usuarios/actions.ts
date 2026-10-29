@@ -2,13 +2,15 @@
 
 import { refresh } from "next/cache";
 import { db } from "@/lib/db";
-import { UserError, createUser, resetPassword, setActive, unlockUser, updateUser } from "@/lib/users";
+import { panelUrl } from "@/lib/meta";
+import { UserError, createUser, inviteUser, resetPassword, setActive, unlockUser, updateUser } from "@/lib/users";
 import { currentUser } from "../current";
 import type { FormState } from "./types";
 
 // Solo administradores (currentUser("usuarios") los revisa en cada acción). Los errores de reglas
 // (último administrador, usuario repetido…) vuelven al formulario; cualquier otro error sube.
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "");
+const linkFor = (token: string) => `${panelUrl().replace(/\/$/, "")}/crear-clave?t=${token}`;
 const echo = (fd: FormData) => Object.fromEntries(["name", "username", "email", "role"].map((k) => [k, text(fd, k)]));
 const clientIds = (fd: FormData) => fd.getAll("clients").map(Number);
 function fail(e: unknown, fd?: FormData): FormState {
@@ -19,9 +21,9 @@ function fail(e: unknown, fd?: FormData): FormState {
 export async function create(_: FormState, fd: FormData): Promise<FormState> {
   const me = await currentUser("usuarios");
   try {
-    const r = await createUser(db, me.id, { username: fd.get("username"), name: fd.get("name"), email: fd.get("email"), role: fd.get("role"), clientIds: clientIds(fd) });
+    const r = await createUser(db, me.id, { username: fd.get("username"), name: fd.get("name"), email: fd.get("email"), role: fd.get("role"), clientIds: clientIds(fd), mode: fd.get("mode") });
     refresh();
-    return { ok: `Listo: ${r.username} ya puede ingresar.`, credentials: { username: r.username, password: r.password } };
+    return { ok: r.token ? `Listo: ${r.username} ya tiene su enlace.` : `Listo: ${r.username} ya puede ingresar.`, credentials: { username: r.username, password: r.password ?? undefined, link: r.token ? linkFor(r.token) : undefined } };
   } catch (e) {
     return fail(e, fd);
   }
@@ -44,6 +46,18 @@ export async function reset(userId: number): Promise<FormState> {
     const r = await resetPassword(db, me.id, userId);
     refresh();
     return { ok: "Contraseña restablecida. Sus sesiones se cerraron.", credentials: r };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// Enlace nuevo para que la persona cree su contraseña (sirve también para restablecerla; anula el enlace anterior).
+export async function invite(userId: number): Promise<FormState> {
+  const me = await currentUser("usuarios");
+  try {
+    const r = await inviteUser(db, me.id, userId);
+    refresh();
+    return { ok: "Enlace nuevo. Su contraseña anterior ya no entra y el enlace anterior dejó de servir.", credentials: { username: r.username, link: linkFor(r.token) } };
   } catch (e) {
     return fail(e);
   }

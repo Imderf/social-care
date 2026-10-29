@@ -1,12 +1,15 @@
 import type { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import { ROLES, type Role } from "./permissions.ts";
-import { USERNAME_HELP, USERNAME_RE, clearFailures, generateTempPassword, hashPassword, passwordError, verifyPassword } from "./auth.ts";
+import { USERNAME_HELP, USERNAME_RE, clearFailures, generateTempPassword, hashPassword, passwordError, sign, verify, verifyPassword } from "./auth.ts";
 
 // Administración de usuarios del panel: crear, editar, restablecer la contraseña, desactivar, desbloquear
 // y asignar clientes. Los mensajes de UserError se le muestran tal cual a la persona que administra.
 // Reglas: siempre queda al menos un administrador activo, y nadie se desactiva, se restablece ni se
 // quita el rol de administrador a sí mismo (para eso están Mi cuenta y otro administrador).
 // Las contraseñas temporales no se guardan ni se registran: se devuelven una sola vez.
+// Enlace de invitación: la persona crea ella misma su contraseña. El enlace es un texto firmado con la versión de sesión
+// del usuario, sin tabla: sirve una vez (al guardar la contraseña la versión sube), vence a los 7 días y uno nuevo anula
+// el anterior. Una cuenta sin contraseña (`password_hash` NULL) está «pendiente» y no puede ingresar.
 
 type Row = RowDataPacket & Record<string, any>;
 
@@ -15,7 +18,7 @@ const isRole = (v: unknown): v is Role => typeof v === "string" && (ROLES as rea
 
 export class UserError extends Error {}
 
-export type UserInfo = { id: number; username: string; name: string; email: string | null; role: Role; active: boolean; mustChange: boolean; lastLogin: Date | null; createdAt: Date; clients: { id: number; name: string }[] };
+export type UserInfo = { id: number; username: string; name: string; email: string | null; role: Role; active: boolean; mustChange: boolean; pending: boolean; lastLogin: Date | null; createdAt: Date; clients: { id: number; name: string }[] };
 
 const toInfo = (u: Row, clients: Row[]): UserInfo => ({
   id: Number(u.id),
@@ -25,6 +28,7 @@ const toInfo = (u: Row, clients: Row[]): UserInfo => ({
   role: u.role,
   active: !!u.active,
   mustChange: !!u.must_change_password,
+  pending: !!u.pending,
   lastLogin: u.last_login_at ?? null,
   createdAt: u.created_at,
   clients: clients.filter((c) => Number(c.user_id) === Number(u.id)).map((c) => ({ id: Number(c.client_id), name: c.name })),
@@ -33,7 +37,7 @@ const toInfo = (u: Row, clients: Row[]): UserInfo => ({
 // Todas las personas, administradores primero, con los clientes que ve cada una.
 export async function listUsers(db: Pool) {
   const [users] = await db.query<Row[]>(
-    "SELECT id, username, name, email, role, active, must_change_password, last_login_at, created_at FROM users ORDER BY active DESC, role, name",
+    "SELECT id, username, name, email, role, active, must_change_password, password_hash IS NULL AS pending, last_login_at, created_at FROM users ORDER BY active DESC, role, name",
   );
   const [clients] = await db.query<Row[]>("SELECT m.user_id, m.client_id, c.name FROM client_members m JOIN clients c ON c.id = m.client_id ORDER BY c.name");
   return users.map((u) => toInfo(u, clients));
@@ -67,6 +71,9 @@ async function tx<T>(db: Pool, fn: (c: PoolConnection) => Promise<T>) {
   }
 }
 
+const INVITATION_SECONDS = 7 * 24 * 3600;
+const invitationToken = (id: number, version: number) => sign("invitacion", [id, version], INVITATION_SECONDS);
+
 async function logEvent(c: Pool | PoolConnection, actorId: number | null, targetId: number | null, action: string, detail: string | null = null) {
   await c.query("INSERT INTO user_events (actor_id, target_id, action, detail) VALUES (?, ?, ?, ?)", [actorId, targetId, action, detail?.slice(0, 255) ?? null]);
 }
@@ -95,20 +102,22 @@ async function setMemberships(c: PoolConnection, userId: number, role: Role, cli
 
 const duplicate = (e: unknown) => (e as { code?: string })?.code === "ER_DUP_ENTRY";
 
-export async function createUser(db: Pool, actorId: number, input: { username?: unknown; name?: unknown; email?: unknown; role?: unknown; clientIds?: unknown }) {
+// mode «enlace» (por defecto): la cuenta nace sin contraseña y se devuelve el enlace para que la persona la cree.
+// mode «temporal»: se genera una contraseña temporal que debe cambiar al entrar.
+export async function createUser(db: Pool, actorId: number | null, input: { username?: unknown; name?: unknown; email?: unknown; role?: unknown; clientIds?: unknown; mode?: unknown }) {
   const username = String(input.username ?? "").trim().toLowerCase();
   if (!USERNAME_RE.test(username)) throw new UserError(USERNAME_HELP);
   const f = cleanFields(input);
-  const temp = generateTempPassword();
-  const hash = await hashPassword(temp);
+  const temp = input.mode === "temporal" ? generateTempPassword() : null;
+  const hash = temp ? await hashPassword(temp) : null;
   try {
     const id = await tx(db, async (c) => {
-      const [r] = await c.query<any>("INSERT INTO users (username, name, email, password_hash, role, must_change_password) VALUES (?, ?, ?, ?, ?, 1)", [username, f.name, f.email, hash, f.role]);
+      const [r] = await c.query<any>("INSERT INTO users (username, name, email, password_hash, role, must_change_password) VALUES (?, ?, ?, ?, ?, ?)", [username, f.name, f.email, hash, f.role, temp ? 1 : 0]);
       await setMemberships(c, r.insertId, f.role, f.clientIds);
       await logEvent(c, actorId, r.insertId, "crear", `${f.role}${f.clientIds.length ? `, ${f.clientIds.length} cliente(s)` : ""}`);
       return Number(r.insertId);
     });
-    return { id, username, password: temp };
+    return { id, username, password: temp, token: temp ? null : invitationToken(id, 1) };
   } catch (e) {
     if (duplicate(e)) throw new UserError(/for key '(?:\w+\.)?email'/.test(String((e as Error).message)) ? "Ya hay una persona con ese correo." : "Ya hay una persona con ese usuario.");
     throw e;
@@ -176,6 +185,54 @@ export async function unlockUser(db: Pool, actorId: number, id: number) {
   if (!u) throw new UserError("La persona ya no existe.");
   clearFailures(id);
   await logEvent(db, actorId, id, "desbloquear");
+}
+
+// Enlace nuevo para que la persona cree su contraseña. Sirve también para restablecerla: la contraseña actual deja de
+// valer al instante y las sesiones se cierran. Anula cualquier enlace anterior.
+export async function inviteUser(db: Pool, actorId: number | null, id: number) {
+  if (id === actorId) throw new UserError("Tu propia contraseña se cambia en Mi cuenta.");
+  const r = await tx(db, async (c) => {
+    const u = await target(c, id);
+    if (!u.active) throw new UserError("La cuenta está desactivada: reactívala antes de enviarle un enlace.");
+    await c.query("UPDATE users SET password_hash = NULL, must_change_password = 0, session_version = session_version + 1 WHERE id = ?", [id]);
+    const [[v]] = await c.query<Row[]>("SELECT session_version FROM users WHERE id = ?", [id]);
+    await logEvent(c, actorId, id, "invitar");
+    return { username: String(u.username), version: Number(v.session_version) };
+  });
+  clearFailures(id);
+  return { username: r.username, token: invitationToken(id, r.version) };
+}
+
+const BAD_LINK = "Este enlace ya se usó o venció. Pídele uno nuevo a quien administra el panel.";
+
+// La persona dueña de un enlace vigente, o null si el enlace es inválido, venció, ya se usó o la cuenta no está pendiente.
+async function pendingFor(c: Pool | PoolConnection, token: string | null | undefined, lock = false) {
+  const parts = verify("invitacion", token);
+  if (!parts) return null;
+  const [[u]] = await c.query<Row[]>(
+    `SELECT id, username, name, active, session_version, password_hash IS NULL AS pending FROM users WHERE id = ?${lock ? " FOR UPDATE" : ""}`,
+    [Number(parts[0])],
+  );
+  return u && u.active && u.pending && Number(u.session_version) === Number(parts[1]) ? u : null;
+}
+
+export async function invitationInfo(db: Pool, token: string | null | undefined) {
+  const u = await pendingFor(db, token);
+  return u ? { name: String(u.name), username: String(u.username) } : null;
+}
+
+// Guarda la contraseña que eligió la persona y gasta el enlace (sube la versión de sesión). El que llama abre la sesión.
+export async function acceptInvitation(db: Pool, token: string | null | undefined, next: string, again: string) {
+  return tx(db, async (c) => {
+    const u = await pendingFor(c, token, true);
+    if (!u) throw new UserError(BAD_LINK);
+    if (next !== again) throw new UserError("La contraseña y su repetición no coinciden.");
+    const bad = passwordError(next, String(u.username));
+    if (bad) throw new UserError(bad);
+    await c.query("UPDATE users SET password_hash = ?, must_change_password = 0, last_login_at = CURRENT_TIMESTAMP(3), session_version = session_version + 1 WHERE id = ?", [await hashPassword(next), u.id]);
+    await logEvent(c, Number(u.id), Number(u.id), "crear_clave");
+    return Number(u.id);
+  });
 }
 
 // La persona cambia su propia contraseña: exige la actual, sube la versión (cierra las demás sesiones)

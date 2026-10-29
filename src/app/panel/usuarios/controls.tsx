@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Check, Copy, KeyRound, Loader2, LockOpen, Pencil, Plus, UserCheck, UserX } from "lucide-react";
+import { Check, Copy, KeyRound, Link2, Loader2, LockOpen, Pencil, Plus, UserCheck, UserX } from "lucide-react";
 import { ROLES, ROLE_HELP, ROLE_LABELS, type Role } from "@/lib/permissions";
-import { create, reset, toggleActive, unlock, update } from "./actions";
+import { create, invite, reset, toggleActive, unlock, update } from "./actions";
 import type { FormState } from "./types";
 
 // Formularios y botones de Usuarios. Las contraseñas temporales salen de la acción una sola vez y solo
@@ -21,20 +21,35 @@ function Message({ state }: { state: FormState }) {
   return null;
 }
 
-// Datos listos para mandar a la persona. La contraseña es temporal y pide cambio en el primer ingreso.
-export function Credentials({ credentials, panelUrl, title }: { credentials: { username: string; password: string }; panelUrl: string; title: string }) {
+// Lo que se le manda a la persona: el enlace para crear su contraseña o una contraseña temporal. Se muestra una sola vez.
+export function Credentials({ credentials, panelUrl, title }: { credentials: { username: string; password?: string; link?: string }; panelUrl: string; title: string }) {
   const [copied, setCopied] = useState(false);
-  const message = `Panel: ${panelUrl}\nUsuario: ${credentials.username}\nContraseña temporal: ${credentials.password}\nAl ingresar, la plataforma te pedirá crear tu propia contraseña.`;
+  const message = credentials.link
+    ? `Hola. Crea tu contraseña para entrar a Ogilvy Social Care con este enlace (sirve una vez y vence en 7 días):\n${credentials.link}\nTu usuario es ${credentials.username}.`
+    : `Panel: ${panelUrl}\nUsuario: ${credentials.username}\nContraseña temporal: ${credentials.password}\nAl ingresar, la plataforma te pedirá crear tu propia contraseña.`;
   return (
     <div role="status" className="space-y-3 rounded-xl border border-ok/30 bg-ok-soft px-4 py-3.5 text-[14px]">
       <p className="font-bold text-ok">{title}</p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-ink-2">
         <dt className="text-ink-3">Usuario</dt>
         <dd className="font-bold">{credentials.username}</dd>
-        <dt className="text-ink-3">Contraseña temporal</dt>
-        <dd className="font-mono text-[15px] font-bold tracking-wide whitespace-nowrap select-all">{credentials.password}</dd>
+        {credentials.link ? (
+          <>
+            <dt className="text-ink-3">Enlace</dt>
+            <dd className="text-[13px] break-all select-all">{credentials.link}</dd>
+          </>
+        ) : (
+          <>
+            <dt className="text-ink-3">Contraseña temporal</dt>
+            <dd className="font-mono text-[15px] font-bold tracking-wide whitespace-nowrap select-all">{credentials.password}</dd>
+          </>
+        )}
       </dl>
-      <p className="text-[13px] text-ink-2">Se muestra una sola vez y no queda guardada: cópiala ahora. La persona tendrá que cambiarla al ingresar.</p>
+      <p className="text-[13px] text-ink-2">
+        {credentials.link
+          ? "Se muestra una sola vez aquí. Sirve una vez y vence en 7 días; si se pierde, genera otro desde «Enlace nuevo»."
+          : "Se muestra una sola vez y no queda guardada: cópiala ahora. La persona tendrá que cambiarla al ingresar."}
+      </p>
       <button
         type="button"
         className={SMALL}
@@ -44,11 +59,11 @@ export function Credentials({ credentials, panelUrl, title }: { credentials: { u
             setCopied(true);
             setTimeout(() => setCopied(false), 2500);
           } catch {
-            /* sin permiso del navegador: la contraseña queda seleccionable arriba */
+            /* sin permiso del navegador: el dato queda seleccionable arriba */
           }
         }}
       >
-        {copied ? <Check size={15} aria-hidden /> : <Copy size={15} aria-hidden />} {copied ? "Copiado" : "Copiar datos para enviar"}
+        {copied ? <Check size={15} aria-hidden /> : <Copy size={15} aria-hidden />} {copied ? "Copiado" : "Copiar mensaje para enviar"}
       </button>
     </div>
   );
@@ -106,7 +121,17 @@ export function CreateUser({ clients, panelUrl }: { clients: ClientOption[]; pan
           <input name="email" type="email" maxLength={255} autoComplete="off" defaultValue={v?.email} className={`${FIELD} mt-1`} />
         </label>
         <RoleAndClients role={role} setRole={setRole} clients={clients} selected={[]} />
-        <p className="text-[13px] text-ink-3">La plataforma genera una contraseña temporal. La persona la cambia en su primer ingreso.</p>
+        <fieldset className="space-y-1.5">
+          <legend className="text-[14px] text-ink-2">Cómo entra</legend>
+          <label className="flex items-start gap-2 text-[14px] text-ink-2">
+            <input type="radio" name="mode" value="enlace" defaultChecked className="mt-1 size-4 accent-[var(--color-brand-ink)]" />
+            <span>Con un enlace para crear su contraseña<span className="block text-[13px] text-ink-3">Recomendado: nadie más conoce su contraseña.</span></span>
+          </label>
+          <label className="flex items-start gap-2 text-[14px] text-ink-2">
+            <input type="radio" name="mode" value="temporal" className="mt-1 size-4 accent-[var(--color-brand-ink)]" />
+            <span>Con una contraseña temporal<span className="block text-[13px] text-ink-3">La plataforma la genera y la persona la cambia al entrar.</span></span>
+          </label>
+        </fieldset>
         <button type="submit" disabled={pending} className={PRIMARY}>
           {pending ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Plus size={15} aria-hidden />} Crear usuario
         </button>
@@ -115,7 +140,7 @@ export function CreateUser({ clients, panelUrl }: { clients: ClientOption[]; pan
   );
 }
 
-type UserLite = { id: number; username: string; name: string; email: string | null; role: Role; active: boolean; clientIds: number[] };
+type UserLite = { id: number; username: string; name: string; email: string | null; role: Role; active: boolean; pending: boolean; clientIds: number[] };
 
 // Botones de una fila: restablecer, desactivar y desbloquear, y el formulario para editar.
 export function UserActions({ user, self, clients, panelUrl }: { user: UserLite; self: boolean; clients: ClientOption[]; panelUrl: string }) {
@@ -126,8 +151,18 @@ export function UserActions({ user, self, clients, panelUrl }: { user: UserLite;
     <div className="w-full space-y-3">
       <div className="flex flex-wrap gap-2">
         {!self && (
-          <button type="button" disabled={pending || !user.active} className={SMALL} onClick={() => confirm(`¿Restablecer la contraseña de ${user.name}? Se cierran sus sesiones y recibe una temporal.`) && run(() => reset(user.id))}>
-            <KeyRound size={15} aria-hidden /> Restablecer contraseña
+          <button
+            type="button"
+            disabled={pending || !user.active}
+            className={SMALL}
+            onClick={() => (user.pending || confirm(`¿Generar un enlace nuevo para ${user.name}? Su contraseña actual deja de servir y se cierran sus sesiones.`)) && run(() => invite(user.id))}
+          >
+            <Link2 size={15} aria-hidden /> {user.pending ? "Enlace nuevo" : "Restablecer con enlace"}
+          </button>
+        )}
+        {!self && !user.pending && (
+          <button type="button" disabled={pending || !user.active} className={SMALL} onClick={() => confirm(`¿Restablecer la contraseña de ${user.name} con una temporal? Se cierran sus sesiones.`) && run(() => reset(user.id))}>
+            <KeyRound size={15} aria-hidden /> Contraseña temporal
           </button>
         )}
         {!self && (
@@ -139,7 +174,7 @@ export function UserActions({ user, self, clients, panelUrl }: { user: UserLite;
           <LockOpen size={15} aria-hidden /> Quitar bloqueo
         </button>
       </div>
-      {result?.credentials && <Credentials credentials={result.credentials} panelUrl={panelUrl} title={result.ok ?? "Contraseña restablecida"} />}
+      {result?.credentials && <Credentials credentials={result.credentials} panelUrl={panelUrl} title={result.ok ?? "Listo"} />}
       <Message state={result} />
       <EditUser user={user} clients={clients} />
     </div>

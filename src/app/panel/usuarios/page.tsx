@@ -14,6 +14,8 @@ const EVENT_TEXT: Record<string, string> = {
   crear: "creó a",
   editar: "editó a",
   restablecer: "restableció la contraseña de",
+  invitar: "generó un enlace para crear la contraseña de",
+  crear_clave: "creó su contraseña con el enlace",
   desactivar: "desactivó a",
   reactivar: "reactivó a",
   desbloquear: "quitó el bloqueo a",
@@ -31,7 +33,7 @@ async function UsuariosContent() {
     <>
       <PageHeader
         title="Usuarios"
-        description="Quién entra al panel, con qué rol y a qué clientes. Aquí se crean, se restablece su contraseña y se desactivan. Las contraseñas temporales las genera la plataforma y se muestran una sola vez."
+        description="Quién entra al panel, con qué rol y a qué clientes. Aquí se crean, se les envía un enlace para que cada persona cree su contraseña, se restablece y se desactivan. Los enlaces se muestran una sola vez."
         actions={<Badge>{plural(active.length, "usuario activo", "usuarios activos")}</Badge>}
       />
 
@@ -54,7 +56,8 @@ async function UsuariosContent() {
                       <Badge tone={u.role === "admin" ? "solid" : "neutral"}>{ROLE_LABELS[u.role]}</Badge>
                       {self && <Badge>Tú</Badge>}
                       {!u.active && <Badge tone="warn">Desactivado</Badge>}
-                      {u.active && u.mustChange && <Badge tone="warn">Debe cambiar su contraseña</Badge>}
+                      {u.active && u.pending && <Badge tone="warn">Invitación pendiente</Badge>}
+                      {u.active && !u.pending && u.mustChange && <Badge tone="warn">Debe cambiar su contraseña</Badge>}
                     </div>
                     <p className="mt-1 text-[13px] text-ink-3">
                       {u.username ? `@${u.username}` : "Sin usuario"}
@@ -65,7 +68,7 @@ async function UsuariosContent() {
                     </p>
                   </div>
                   <UserActions
-                    user={{ id: u.id, username: u.username, name: u.name, email: u.email, role: u.role, active: u.active, clientIds: u.clients.map((c) => c.id) }}
+                    user={{ id: u.id, username: u.username, name: u.name, email: u.email, role: u.role, active: u.active, pending: u.pending, clientIds: u.clients.map((c) => c.id) }}
                     self={self}
                     clients={clients}
                     panelUrl={url}
@@ -75,7 +78,7 @@ async function UsuariosContent() {
             );
           })}
           <p className="text-[13px] text-ink-3">
-            Desactivar cierra la sesión al instante y no borra nada: lo que la persona hizo sigue a su nombre. Restablecer genera otra contraseña temporal, cierra sus sesiones y la obliga a cambiarla al entrar.
+            Desactivar cierra la sesión al instante y no borra nada: lo que la persona hizo sigue a su nombre. Restablecer deja sin efecto la contraseña actual y cierra sus sesiones: la persona entra con un enlace nuevo (o con una contraseña temporal) y crea la suya.
             Tras 5 intentos fallidos una cuenta se bloquea 15 minutos; «Quitar bloqueo» la libera antes. Siempre queda al menos un administrador activo.
           </p>
         </div>
@@ -99,7 +102,7 @@ async function UsuariosContent() {
               <li key={e.id} className="flex flex-wrap items-baseline justify-between gap-x-4 px-5 py-2.5 text-[14px] text-ink-2">
                 <span>
                   <strong className="text-ink">{e.actor ?? "Alguien"}</strong> {EVENT_TEXT[e.action] ?? e.action}
-                  {e.action !== "cambiar_clave" && <> <strong className="text-ink">{e.target ?? "una persona eliminada"}</strong></>}
+                  {e.action !== "cambiar_clave" && e.action !== "crear_clave" && <> <strong className="text-ink">{e.target ?? "una persona eliminada"}</strong></>}
                   {e.detail && <span className="text-ink-3"> ({e.detail})</span>}
                 </span>
                 <span className="text-[13px] text-ink-3">{formatDate(e.at)}</span>
