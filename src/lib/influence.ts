@@ -30,7 +30,7 @@ export async function setInfluence(db: Pool, clientId: number, v: Influence) {
   if (cuts.some((n) => !Number.isInteger(n) || n < 1)) return "Los cortes son números enteros de seguidores, desde 1.";
   if (cuts.some((n, i) => i > 0 && n <= cuts[i - 1])) return "Cada nivel empieza en más seguidores que el anterior: nano < micro < macro < mega.";
   if (!TIERS.includes(v.escalateFrom) || v.escalateFrom === ("comun" as string)) return "Elige desde qué nivel pasa a una persona.";
-  await db.query("UPDATE clients SET settings = JSON_SET(settings, '$.influence', CAST(? AS JSON)) WHERE id = ?", [JSON.stringify(v), clientId]);
+  await db.query("UPDATE clients SET settings = JSON_SET(settings, '$.influence', JSON_EXTRACT(?, '$')) WHERE id = ?", [JSON.stringify(v), clientId]);
   return null;
 }
 
@@ -51,7 +51,7 @@ export const listWatch = async (db: Pool, clientId: number) =>
 export async function addWatch(db: Pool, clientId: number, values: string, note: string | null) {
   const names = [...new Set(values.split(/[,\n]/).map(handle).filter(Boolean).map((v) => v.slice(0, 120)))];
   for (const v of names) {
-    await db.query("INSERT INTO lists (client_id, kind, value, note) VALUES (?, 'vigilancia', ?, ?) AS n ON DUPLICATE KEY UPDATE note = n.note", [clientId, v, note?.trim().slice(0, 255) || null]);
+    await db.query("INSERT INTO lists (client_id, kind, value, note) VALUES (?, 'vigilancia', ?, ?) ON DUPLICATE KEY UPDATE note = VALUES(note)", [clientId, v, note?.trim().slice(0, 255) || null]);
   }
   return names.length;
 }

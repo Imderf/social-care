@@ -27,7 +27,7 @@ const escalated = async (account: number, kind = "comentario", window: Date | nu
   return { i, e: await insert("INSERT INTO escalations (client_id, interaction_id, reason, suggested_draft) VALUES (?, ?, 'Queja', '¡Hola! Lamentamos lo ocurrido.')", [client, i]) };
 };
 const fakeMeta = { replyToComment: async () => "r1", hideComment: async () => null, sendMessage: async () => "m1" };
-const lastAction = async (i: number) => (await rows("SELECT id, type, status, JSON_UNQUOTE(payload->'$.by') AS by_ FROM actions WHERE interaction_id = ?", [i]))[0];
+const lastAction = async (i: number) => (await rows("SELECT id, type, status, JSON_UNQUOTE(JSON_EXTRACT(payload, '$.by')) AS by_ FROM actions WHERE interaction_id = ?", [i]))[0];
 
 before(async () => {
   process.env.TOKEN_ENCRYPTION_KEY ||= randomBytes(32).toString("base64");

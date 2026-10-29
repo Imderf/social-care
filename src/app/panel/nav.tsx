@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Ban, BookOpen, Building2, UserRoundSearch, ClipboardCheck, FileText, Inbox, LayoutDashboard, MessagesSquare, Network, Plug } from "lucide-react";
+import { Ban, BookOpen, Building2, UserRoundSearch, ClipboardCheck, FileSpreadsheet, FileText, Inbox, LayoutDashboard, MessagesSquare, Network, Plug } from "lucide-react";
 
 const GROUPS = [
   {
@@ -22,6 +22,7 @@ const GROUPS = [
       { href: "/panel/palabras", label: "Palabras prohibidas", icon: Ban },
       { href: "/panel/perfiles", label: "Perfiles e influenciadores", icon: UserRoundSearch },
       { href: "/panel/conocimiento", label: "Base de conocimiento", icon: BookOpen },
+      { href: "/panel/hoja", label: "Hoja de casos", icon: FileSpreadsheet },
       { href: "/panel/cuentas", label: "Cuentas conectadas", icon: Plug },
     ],
   },

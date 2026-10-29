@@ -100,7 +100,7 @@ export async function saveUser(db: Pool, username: string, name: string, passwor
   if (!/^[a-z0-9_.-]{3,60}$/i.test(username)) throw new Error("El usuario lleva de 3 a 60 letras, números, punto, guion o guion bajo.");
   if (password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
   await db.query(
-    "INSERT INTO users (username, name, password_hash) VALUES (?, ?, ?) AS n ON DUPLICATE KEY UPDATE name = n.name, password_hash = n.password_hash, session_version = users.session_version + 1",
+    "INSERT INTO users (username, name, password_hash) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), password_hash = VALUES(password_hash), session_version = users.session_version + 1",
     [username.toLowerCase(), name, await hashPassword(password)],
   );
 }

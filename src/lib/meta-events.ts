@@ -2,6 +2,7 @@ import type { Pool, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { decryptToken } from "./crypto.ts";
 import { maskPersonalData } from "./mask.ts";
 import { PROFILES, type PostOrigin, attachmentLabel, fetchCommentText, fetchPost, fetchUserName, postOrigin } from "./meta.ts";
+import { releaseWaitingNotices } from "./cases.ts";
 import { originFor, postType, upsertPost } from "./posts.ts";
 export { attachmentLabel };
 
@@ -134,11 +135,16 @@ export async function applyItem(db: Pool, account: Account, item: MetaItem, opts
       );
     if (!interactionId) return "duplicate";
     await db.query("INSERT INTO jobs (type, payload) VALUES ('classify', JSON_OBJECT('interaction_id', ?))", [interactionId]);
+    // Volvió a escribir por DM: los avisos de su caso que esperaban salen por aquí.
+    if (item.kind === "dm" && source === "webhook") await releaseWaitingNotices(db, account.client_id, contact.insertId, interactionId);
     return "created";
   }
 
   // Lo que publicó la propia plataforma también llega como eco: no es respuesta del equipo.
-  const [[own]] = await db.query<Row[]>("SELECT id FROM actions WHERE client_id = ? AND meta_response_id = ?", [account.client_id, item.selfId]);
+  const [[own]] = await db.query<Row[]>(
+    "SELECT id FROM actions WHERE client_id = ? AND meta_response_id = ? UNION ALL SELECT id FROM case_notices WHERE client_id = ? AND meta_response_id = ?",
+    [account.client_id, item.selfId, account.client_id, item.selfId],
+  );
   if (own) return "skip";
 
   // Respuesta del equipo: a un comentario por su id; a un DM, el último sin responder de esa persona.

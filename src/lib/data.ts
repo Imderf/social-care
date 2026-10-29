@@ -37,7 +37,7 @@ export async function createClient(db: Pool, name: string, copyFrom: number | nu
     await db.query("INSERT INTO lists (client_id, kind, value, note) SELECT ?, kind, value, note FROM lists WHERE client_id = ?", [id, copyFrom]);
     // Los niveles de influencia también son configuración.
     const [[src]] = await db.query<any[]>("SELECT JSON_EXTRACT(settings, '$.influence') AS v FROM clients WHERE id = ?", [copyFrom]);
-    if (src?.v) await db.query("UPDATE clients SET settings = JSON_SET(settings, '$.influence', CAST(? AS JSON)) WHERE id = ?", [typeof src.v === "string" ? src.v : JSON.stringify(src.v), id]);
+    if (src?.v) await db.query("UPDATE clients SET settings = JSON_SET(settings, '$.influence', JSON_EXTRACT(?, '$')) WHERE id = ?", [typeof src.v === "string" ? src.v : JSON.stringify(src.v), id]);
   }
   return id;
 }
@@ -381,12 +381,14 @@ export const listOpenEscalations = (db: Pool, clientId: number) =>
   all(db, `SELECT e.id, e.reason, e.priority, e.suggested_draft, e.created_at, i.id AS interaction_id, i.contact_id, i.kind,
                   i.text_masked, i.permalink, i.window_expires_at, i.confidence, i.mode, i.proposed_reply, i.analysis_only, a.platform,
                   a.mode AS account_mode, a.name AS account, ct.name AS case_type, ct.public_action, c.username, c.followers, c.verified, c.account_type, c.bio,
-                  x.type AS action_type, x.status AS action_status, po.origin AS post_origin
+                  IF(n.id IS NULL, x.type, 'dm') AS action_type, IF(n.id IS NULL, x.status, IF(n.delivery IN ('enviar', 'enviando'), 'pendiente', NULL)) AS action_status,
+                  po.origin AS post_origin, n.id AS notice_id
            FROM escalations e
            JOIN interactions i ON i.id = e.interaction_id AND i.client_id = e.client_id
            JOIN accounts a ON a.id = i.account_id
            LEFT JOIN posts po ON po.account_id = i.account_id AND po.meta_id = i.post_id
            LEFT JOIN actions x ON x.interaction_id = i.id AND x.type IN ('responder', 'ocultar', 'dm')
+           LEFT JOIN case_notices n ON n.escalation_id = e.id
            LEFT JOIN case_types ct ON ct.id = i.case_type_id
            LEFT JOIN contacts c ON c.id = i.contact_id
            WHERE e.client_id = ? AND e.resolved_at IS NULL

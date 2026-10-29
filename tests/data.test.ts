@@ -3,6 +3,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import type { Pool, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import * as data from "../src/lib/data.ts";
+import { listSheetCases } from "../src/lib/cases.ts";
 import { freshTestDb } from "./test-db.ts";
 
 let db: Pool;
@@ -32,6 +33,7 @@ before(async () => {
       [c, acc, contact, name, ct],
     );
     await insert("INSERT INTO escalations (client_id, interaction_id, reason, priority) VALUES (?, ?, ?, 'critica')", [c, i2, name]);
+    await insert("INSERT INTO sheet_cases (client_id, tab, case_number, profile, contact_id, status) VALUES (?, 'Octubre', '1', ?, ?, 'Pendiente')", [c, name, contact]);
     clients.push({ id: c, interaction: i, contact });
   }
 });
@@ -39,7 +41,7 @@ after(() => db.end());
 
 test("cada lectura del panel solo trae datos del cliente pedido", async () => {
   const [a, b] = clients;
-  const lists = [data.listCaseTypes, data.listTemplates, data.listKnowledge, data.listAccounts, data.listOpenEscalations, data.listProposals];
+  const lists = [data.listCaseTypes, data.listTemplates, data.listKnowledge, data.listAccounts, data.listOpenEscalations, data.listProposals, listSheetCases];
   for (const list of lists) {
     const rowsA = await list(db, a.id);
     assert.equal(rowsA.length, 1, list.name);

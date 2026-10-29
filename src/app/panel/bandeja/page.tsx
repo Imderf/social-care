@@ -213,7 +213,7 @@ async function CaseDetail({ e, clientId, backHref, error }: { e: Escalation; cli
 // prueba, historial o ventana de DM vencida), se responde desde Meta y el caso se cierra solo.
 function ReplyFooter({ e, network, error, banned }: { e: Escalation; network: string; error: string | null; banned: string[] }) {
   const draft = e.suggested_draft ?? e.proposed_reply ?? "";
-  const blocked = cannotSend({ mode: e.account_mode, analysis_only: e.analysis_only, kind: e.kind, window_expires_at: e.window_expires_at, post_origin: e.post_origin });
+  const blocked = cannotSend({ mode: e.account_mode, analysis_only: e.analysis_only, kind: e.kind, window_expires_at: e.window_expires_at, post_origin: e.post_origin, notice_id: e.notice_id });
   const dm = e.kind === "dm";
   return (
     <footer className="space-y-3 border-t border-line bg-canvas/60 px-5 py-4 md:px-6">

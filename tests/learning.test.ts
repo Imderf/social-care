@@ -56,7 +56,7 @@ test("en asistido, aceptar publica una sola vez; el eco propio no cuenta como de
   const id = await proposal(live);
   assert.deepEqual(await reviewProposal(db, client, id, {}), { verdict: "correcta", published: true });
   assert.equal((await reviewProposal(db, client, id, {}))?.published, false, "aprobar dos veces no publica dos veces");
-  const [action] = await rows("SELECT id, type, status, actor, JSON_UNQUOTE(payload->'$.text') AS text FROM actions WHERE interaction_id = ?", [id]);
+  const [action] = await rows("SELECT id, type, status, actor, JSON_UNQUOTE(JSON_EXTRACT(payload, '$.text')) AS text FROM actions WHERE interaction_id = ?", [id]);
   assert.deepEqual([action.type, action.status, action.actor, action.text], ["responder", "pendiente", "persona", "¡Gracias @lu.m! 💙"]);
   assert.equal((await rows("SELECT COUNT(*) AS n FROM jobs WHERE type = 'publish'"))[0].n, 1);
 
@@ -77,7 +77,7 @@ test("en asistido, aceptar publica una sola vez; el eco propio no cuenta como de
 test("corregir publica lo corregido y queda como ejemplo; descartar no publica y pasa a la bandeja", async () => {
   const fixed = await proposal(live);
   assert.equal((await reviewProposal(db, client, fixed, { text: "¡Gracias a ti, @lu.m! 💙 Aquí estamos." }))?.verdict, "corregir");
-  assert.equal((await rows("SELECT JSON_UNQUOTE(payload->'$.text') AS t FROM actions WHERE interaction_id = ?", [fixed]))[0].t, "¡Gracias a ti, @lu.m! 💙 Aquí estamos.");
+  assert.equal((await rows("SELECT JSON_UNQUOTE(JSON_EXTRACT(payload, '$.text')) AS t FROM actions WHERE interaction_id = ?", [fixed]))[0].t, "¡Gracias a ti, @lu.m! 💙 Aquí estamos.");
   const ex = await learnedExamples(db, client);
   assert.equal(ex[0].reply, "¡Gracias a ti, {usuario}! 💙 Aquí estamos.", "el ejemplo va sin el usuario");
 

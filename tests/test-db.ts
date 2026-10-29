@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import mysql from "mysql2/promise";
 import { migrate } from "../db/migrate.ts";
+import { jsonCast } from "../src/lib/db.ts";
 
 export async function freshTestDb() {
   const uri = process.env.TEST_DATABASE_URL || "mysql://root@127.0.0.1:3307/social_care_test";
@@ -13,5 +14,5 @@ export async function freshTestDb() {
   await admin.query(`CREATE DATABASE \`${name}\``);
   await admin.end();
   await migrate(uri);
-  return mysql.createPool({ uri, timezone: "Z" });
+  return mysql.createPool({ uri, timezone: "Z", typeCast: jsonCast });
 }

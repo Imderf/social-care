@@ -5,6 +5,7 @@ import { classifyInteraction } from "../src/lib/classify.ts";
 import { publishAction } from "../src/lib/publish.ts";
 import { backfillAccount } from "../src/lib/backfill.ts";
 import { completePost } from "../src/lib/posts.ts";
+import { dueSyncs, sendNotice, syncSheet } from "../src/lib/cases.ts";
 
 // Un handler por tipo de trabajo. Un tipo sin handler se queda en la cola hasta que exista uno:
 // "classify" solo se toma cuando hay llave y modelo de OpenAI en el .env.
@@ -27,6 +28,15 @@ handlers.publish = async ({ action_id }) => {
   const r = await publishAction(db, Number(action_id));
   console.log(r ? `acción ${action_id}: ${r.type} publicada en Meta` : `acción ${action_id}: ya estaba hecha`);
 };
+// Hoja de casos: leer la Hoja en los turnos del cliente y mandar los avisos (src/lib/cases.ts).
+handlers.sheet_sync = async ({ client_id }) => {
+  const r = await syncSheet(db, Number(client_id));
+  console.log(!r ? `hoja cliente ${client_id}: sin Hoja elegida` : "error" in r ? `hoja cliente ${client_id}: ${r.error}` : `hoja cliente ${client_id}: ${r.casos} casos, ${r.cambios} cambios, ${r.avisos} avisos`);
+};
+handlers.notice_send = async ({ notice_id }) => {
+  const r = await sendNotice(db, Number(notice_id));
+  console.log(r ? `aviso ${notice_id}: enviado${r.tag ? " como agente humano" : ""}` : `aviso ${notice_id}: ya estaba enviado o no está listo`);
+};
 if (process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL) {
   handlers.classify = async ({ interaction_id }) => {
     const r = await classifyInteraction(db, Number(interaction_id));
@@ -40,7 +50,22 @@ for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => (running = 
 
 console.log(`worker listo; tipos: ${Object.keys(handlers).join(", ") || "ninguno"}`);
 
+// Una vez por minuto: los clientes con un turno de lectura de la Hoja pendiente (sin repetir el trabajo).
+let nextSchedule = 0;
+async function scheduleSheets() {
+  if (Date.now() < nextSchedule) return;
+  nextSchedule = Date.now() + 60_000;
+  for (const clientId of await dueSyncs(db)) {
+    await db.query(
+      `INSERT INTO jobs (type, payload) SELECT 'sheet_sync', JSON_OBJECT('client_id', ?) FROM DUAL
+       WHERE NOT EXISTS (SELECT 1 FROM jobs WHERE type = 'sheet_sync' AND status IN ('pending', 'running') AND JSON_EXTRACT(payload, '$.client_id') = ?)`,
+      [clientId, clientId],
+    );
+  }
+}
+
 while (running) {
+  await scheduleSheets().catch((e) => console.error(`turnos de la Hoja: ${(e as Error).message}`));
   const jobs = await claimJobs(db, Object.keys(handlers));
 
   for (const job of jobs) {

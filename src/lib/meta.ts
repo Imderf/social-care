@@ -220,12 +220,13 @@ export async function hideComment(platform: "fb" | "ig", commentId: string, toke
   return null;
 }
 
-// DM dentro de la ventana de 24 h (Messenger e Instagram, con el token de la página).
-export async function sendMessage(pageId: string, recipientId: string, text: string, token: string) {
+// DM dentro de la ventana de 24 h (Messenger e Instagram, con el token de la página). Pasadas las
+// 24 h y hasta 7 días, solo una persona, con la etiqueta HUMAN_AGENT (permiso Human Agent de App Review).
+export async function sendMessage(pageId: string, recipientId: string, text: string, token: string, tag?: "HUMAN_AGENT") {
   const r = await graph<{ message_id: string }>(`${pageId}/messages`, {
     recipient: JSON.stringify({ id: recipientId }),
     message: JSON.stringify({ text }),
-    messaging_type: "RESPONSE",
+    ...(tag ? { messaging_type: "MESSAGE_TAG", tag } : { messaging_type: "RESPONSE" }),
     access_token: token,
   }, "POST");
   return r.message_id;

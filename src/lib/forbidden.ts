@@ -27,7 +27,7 @@ export const listForbidden = async (db: Pool, clientId: number) =>
 export async function addForbidden(db: Pool, clientId: number, values: string, note: string | null) {
   const words = [...new Set(values.split(/[,\n]/).map((v) => v.trim().replace(/\s+/g, " ").slice(0, 120)).filter(Boolean))];
   for (const w of words) {
-    await db.query("INSERT INTO lists (client_id, kind, value, note) VALUES (?, 'prohibida', ?, ?) AS n ON DUPLICATE KEY UPDATE note = n.note", [clientId, w, note?.trim().slice(0, 255) || null]);
+    await db.query("INSERT INTO lists (client_id, kind, value, note) VALUES (?, 'prohibida', ?, ?) ON DUPLICATE KEY UPDATE note = VALUES(note)", [clientId, w, note?.trim().slice(0, 255) || null]);
   }
   return words.length;
 }

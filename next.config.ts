@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   // Túnel fijo de Cloudflare para recibir webhooks de Meta en local (solo afecta a next dev).
   allowedDevOrigins: ["socialcare.colombiaogilvy.com"],
   poweredByHeader: false,
+  // ponytail: la raíz lleva al panel (y este a Ingresar) hasta que exista la página principal pública.
+  async redirects() {
+    return [{ source: "/", destination: "/panel", permanent: false }];
+  },
   // El panel no se muestra dentro de otros sitios ni adivina tipos de archivo.
   async headers() {
     return [
