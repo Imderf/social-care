@@ -38,7 +38,7 @@ const ERRORS: Record<string, string> = {
 };
 
 async function CuentasContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [accounts, sp, learning] = await Promise.all([listAccounts(db, client.id), searchParams, getLearning(db, client.id)]);
   const missing = missingMetaConfig();

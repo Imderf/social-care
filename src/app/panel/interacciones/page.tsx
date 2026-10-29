@@ -19,7 +19,7 @@ const FILTER_LABELS: Record<keyof typeof INTERACTION_FILTERS, string> = {
 };
 
 async function InteraccionesContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("bandeja");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 100) : "";

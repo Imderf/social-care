@@ -101,7 +101,7 @@ function TopicPicker({ name, selected, counts }: { name: string; selected: strin
 }
 
 async function EditorContent({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const isNew = id === "nuevo";

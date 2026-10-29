@@ -26,7 +26,7 @@ const ACTION: Record<string, { label: string; tone: BadgeTone }> = {
 };
 
 async function PruebasContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("pruebas");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const filter = (Object.keys(PROPOSAL_FILTERS) as (keyof typeof PROPOSAL_FILTERS)[]).find((f) => f === sp.ver) ?? "pendientes";

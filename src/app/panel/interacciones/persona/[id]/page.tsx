@@ -24,7 +24,7 @@ function Stat({ label, value, note }: { label: string; value: React.ReactNode; n
 }
 
 async function PersonaContent({ params }: { params: Promise<{ id: string }> }) {
-  const client = await currentClient();
+  const client = await currentClient("bandeja");
   if (!client) return <NoClient />;
   const person = await getContact(db, client.id, Number((await params).id));
   if (!person) notFound();

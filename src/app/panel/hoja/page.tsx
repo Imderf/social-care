@@ -39,7 +39,7 @@ function Step({ n, title, children, id }: { n: number; title: string; children: 
 }
 
 async function HojaContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const [conn, cfg, cases] = await Promise.all([getConnection(db, client.id), getCases(db, client.id), listSheetCases(db, client.id)]);

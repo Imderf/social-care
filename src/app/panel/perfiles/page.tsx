@@ -19,7 +19,7 @@ const CHANNELS = [
 ] as const;
 
 async function PerfilesContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const view = sp.vista === "influenciadores" ? "influenciadores" : "importantes";

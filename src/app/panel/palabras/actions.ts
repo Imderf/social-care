@@ -6,7 +6,7 @@ import { addForbidden, removeForbidden } from "@/lib/forbidden";
 import { currentClient } from "../current";
 
 export async function add(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const values = String(formData.get("values") ?? "").slice(0, 4000);
   if (!client || !values.trim()) return;
   await addForbidden(db, client.id, values, String(formData.get("note") ?? ""));
@@ -14,7 +14,7 @@ export async function add(formData: FormData) {
 }
 
 export async function remove(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const id = Number(formData.get("id"));
   if (!client || !Number.isInteger(id)) return;
   await removeForbidden(db, client.id, id);

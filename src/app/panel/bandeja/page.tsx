@@ -28,7 +28,7 @@ type Params = Promise<Record<string, string | string[] | undefined>>;
 type Escalation = Awaited<ReturnType<typeof listOpenEscalations>>[number];
 
 async function BandejaContent({ searchParams }: { searchParams: Params }) {
-  const client = await currentClient();
+  const client = await currentClient("bandeja");
   if (!client) return <NoClient />;
   const sp = await searchParams;
   const filter = FILTERS.find((f) => f === sp.prioridad) ?? "todas";

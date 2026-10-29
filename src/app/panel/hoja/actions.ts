@@ -11,7 +11,7 @@ const back = (q: Record<string, string>): never => redirect(`/panel/hoja?${new U
 const text = (v: FormDataEntryValue | null, max: number) => String(v ?? "").trim().slice(0, max);
 
 export async function saveCasesConfig(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return;
   const values = formData.getAll("state_value").map((v) => text(v, 100));
   const texts = formData.getAll("state_text").map((v) => text(v, 1000));
@@ -36,7 +36,7 @@ export async function saveCasesConfig(formData: FormData) {
 
 // Para el selector de Google en el navegador: un token de acceso corto (permiso drive.file).
 export async function pickerConfig(): Promise<{ token: string; apiKey: string; appId: string } | { error: string }> {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const conn = client ? await getConnection(db, client.id) : null;
   if (!conn) return { error: "Conecta primero la cuenta de Google." };
   if (missingGoogleConfig().length) return { error: "Falta configurar el acceso de Google en el servidor." };
@@ -49,7 +49,7 @@ export async function pickerConfig(): Promise<{ token: string; apiKey: string; a
 
 // La Hoja elegida en el selector. Se prueba que se pueda leer antes de guardarla.
 export async function chooseSpreadsheet(id: string, name: string): Promise<{ error?: string }> {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const conn = client ? await getConnection(db, client.id) : null;
   if (!client || !conn) return { error: "Conecta primero la cuenta de Google." };
   if (!/^[\w-]{20,100}$/.test(id)) return { error: "Esa no es una Hoja de cálculo de Google." };
@@ -67,7 +67,7 @@ export async function chooseSpreadsheet(id: string, name: string): Promise<{ err
 }
 
 export async function syncNow() {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return;
   const r = await syncSheet(db, client.id);
   if (!r) back({ error: "Elige primero la Hoja.", ancla: "lectura" });
@@ -76,7 +76,7 @@ export async function syncNow() {
 }
 
 export async function disconnectGoogle() {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const conn = client ? await getConnection(db, client.id) : null;
   if (!client || !conn) return;
   // Se revoca en Google (si falla, igual se borra aquí: sin el token la plataforma no entra).

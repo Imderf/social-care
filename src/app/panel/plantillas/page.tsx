@@ -14,7 +14,7 @@ const WHEN_HELP = "Si un tipo de caso tiene varias plantillas, la IA elige la qu
 const byCode = (a: string, b: string) => (Number(a.slice(1)) || 0) - (Number(b.slice(1)) || 0) || a.localeCompare(b);
 
 async function PlantillasContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return <NoClient />;
   const [versions, uncovered, sp] = await Promise.all([listTemplateVersions(db, client.id), listUncovered(db, client.id), searchParams]);
   // Desde el editor de la matriz: crear la plantilla que falta y volver al tipo de caso.

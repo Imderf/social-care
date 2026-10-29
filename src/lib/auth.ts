@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomInt, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import type { Pool, RowDataPacket } from "mysql2/promise";
 
@@ -58,11 +58,12 @@ export async function startSession(db: Pool, id: number) {
   return sign("sesion", [id, Number(u?.session_version ?? 1)], SESSION_SECONDS);
 }
 
+// Una persona desactivada pierde la sesión al instante, sin esperar a que venza.
 export async function sessionValid(db: Pool, token?: string) {
   const parts = verify("sesion", token);
   if (!parts) return null;
-  const [[u]] = await db.query<RowDataPacket[]>("SELECT session_version FROM users WHERE id = ?", [Number(parts[0])]);
-  return u && Number(u.session_version) === Number(parts[1]) ? Number(parts[0]) : null;
+  const [[u]] = await db.query<RowDataPacket[]>("SELECT session_version, active FROM users WHERE id = ?", [Number(parts[0])]);
+  return u && u.active && Number(u.session_version) === Number(parts[1]) ? Number(parts[0]) : null;
 }
 
 // ponytail: límite de intentos en memoria (se pierde al reiniciar y no se comparte entre procesos).
@@ -81,26 +82,57 @@ function fail(key: string, limit: number, now: number) {
   if (failures.size > 10_000) for (const [k, v] of failures) if (v.until <= now) failures.delete(k);
 }
 
+// Quita el bloqueo por intentos fallidos de una persona (lo usa la administración).
+export const clearFailures = (userId: number) => void failures.delete(`u:${userId}`);
+
 export async function login(db: Pool, username: string, password: string, ip = "") {
   const name = username.trim().toLowerCase();
   const now = Date.now();
-  const [[u]] = await db.query<RowDataPacket[]>("SELECT id, password_hash FROM users WHERE username = ? OR email = ?", [name, name]);
+  const [[u]] = await db.query<RowDataPacket[]>("SELECT id, password_hash, active FROM users WHERE username = ? OR email = ?", [name, name]);
   const keys: [string, number][] = [[`u:${u ? u.id : name}`, 5], ...(ip ? [[`ip:${ip}`, 20] as [string, number]] : [])];
   if (keys.some(([k, limit]) => locked(k, limit, now))) return "bloqueado" as const;
-  if ((await verifyPassword(password, u?.password_hash ?? null)) && u) {
+  // Una cuenta desactivada responde igual que una contraseña mala: no se nota cuál es el caso.
+  if ((await verifyPassword(password, u?.password_hash ?? null)) && u?.active) {
     failures.delete(keys[0][0]);
+    await db.query("UPDATE users SET last_login_at = CURRENT_TIMESTAMP(3) WHERE id = ?", [u.id]);
     return Number(u.id);
   }
   for (const [k, limit] of keys) fail(k, limit, now);
   return null;
 }
 
+export const USERNAME_RE = /^[a-z0-9_.-]{3,60}$/i;
+export const USERNAME_HELP = "El usuario lleva de 3 a 60 letras, números, punto, guion o guion bajo.";
+
+// Reglas de las contraseñas que escribe una persona (las temporales las genera generateTempPassword).
+export function passwordError(password: string, username = "") {
+  if (password.length < 8) return "La contraseña debe tener al menos 8 caracteres.";
+  if (password.length > 200) return "La contraseña es demasiado larga.";
+  if (username && password.toLowerCase() === username.toLowerCase()) return "La contraseña no puede ser igual al usuario.";
+  return null;
+}
+
+// Contraseña temporal para entregar a mano: sin letras que se confunden (0/O, 1/l/I), en tres grupos fáciles de leer.
+// Siempre lleva mayúscula, minúscula y número. La persona la cambia en su primer ingreso.
+export function generateTempPassword() {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ", lower = "abcdefghijkmnopqrstuvwxyz", digits = "23456789";
+  const pick = (set: string) => set[randomInt(set.length)];
+  const chars = [pick(upper), pick(lower), pick(digits), ...Array.from({ length: 9 }, () => pick(upper + lower + digits))];
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  const s = chars.join("");
+  return `${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8)}`;
+}
+
 // Crea el usuario o, si ya existe, le cambia la contraseña.
 export async function saveUser(db: Pool, username: string, name: string, password: string) {
-  if (!/^[a-z0-9_.-]{3,60}$/i.test(username)) throw new Error("El usuario lleva de 3 a 60 letras, números, punto, guion o guion bajo.");
-  if (password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  if (!USERNAME_RE.test(username)) throw new Error(USERNAME_HELP);
+  const bad = passwordError(password, username);
+  if (bad) throw new Error(bad);
   await db.query(
-    "INSERT INTO users (username, name, password_hash) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), password_hash = VALUES(password_hash), session_version = users.session_version + 1",
+    "INSERT INTO users (username, name, password_hash) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), password_hash = VALUES(password_hash), must_change_password = 0, session_version = users.session_version + 1",
     [username.toLowerCase(), name, await hashPassword(password)],
   );
 }

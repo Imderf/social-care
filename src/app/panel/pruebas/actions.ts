@@ -11,7 +11,7 @@ const clean = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim(
 
 // Aceptar (con o sin cambios) o descartar. En asistido, aceptar publica y descartar lo deja en la bandeja.
 export async function review(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("pruebas");
   const id = Number(formData.get("id"));
   const action = String(formData.get("action"));
   if (!client || !Number.isInteger(id) || !["publicar", "descartar", "ocultar"].includes(action)) return;
@@ -33,7 +33,7 @@ export async function review(formData: FormData) {
 
 // Deshace una revisión hecha por error, si todavía no se publicó.
 export async function undo(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("pruebas");
   const id = Number(formData.get("id"));
   if (!client || !Number.isInteger(id)) return;
   await undoReview(db, client.id, id);
@@ -42,7 +42,7 @@ export async function undo(formData: FormData) {
 
 // Pide a la IA otra propuesta; la nota del formulario es la indicación para la IA.
 export async function regenerate(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("pruebas");
   const id = Number(formData.get("id"));
   if (!client || !Number.isInteger(id)) return;
   await redraftInteraction(db, client.id, id, { current: clean(formData.get("text")), hint: clean(formData.get("note")) });

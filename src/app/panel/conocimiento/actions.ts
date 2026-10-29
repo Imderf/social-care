@@ -10,7 +10,7 @@ const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "strin
 
 // Agrega un dato a la base, a mano o desde una sugerencia. Todo filtra por el cliente elegido.
 export async function addItem(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const topic = String(formData.get("topic")) as KnowledgeTopic;
   const title = text(formData.get("title"), 200);
   const content = text(formData.get("content"), 2000);
@@ -21,7 +21,7 @@ export async function addItem(formData: FormData) {
 }
 
 export async function removeItem(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const id = Number(formData.get("id"));
   if (!client || !Number.isInteger(id)) return;
   await removeKnowledge(db, client.id, id);
@@ -29,7 +29,7 @@ export async function removeItem(formData: FormData) {
 }
 
 export async function forgetExample(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const id = Number(formData.get("id"));
   if (!client || !Number.isInteger(id)) return;
   await excludeExample(db, client.id, id);
@@ -37,7 +37,7 @@ export async function forgetExample(formData: FormData) {
 }
 
 export async function dismiss(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const id = Number(formData.get("id"));
   if (!client || !Number.isInteger(id)) return;
   await dismissSuggestion(db, client.id, id);

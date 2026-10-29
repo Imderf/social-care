@@ -9,7 +9,7 @@ import { currentClient } from "../current";
 const num = (v: FormDataEntryValue | null) => Number(String(v ?? "").replace(/\D/g, ""));
 
 export async function saveLevels(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   if (!client) return;
   const from = String(formData.get("escalate_from"));
   const error = await setInfluence(db, client.id, {
@@ -24,7 +24,7 @@ export async function saveLevels(formData: FormData) {
 }
 
 export async function addWatched(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const values = String(formData.get("values") ?? "").slice(0, 4000);
   if (!client || !values.trim()) return;
   await addWatch(db, client.id, values, String(formData.get("note") ?? ""));
@@ -32,7 +32,7 @@ export async function addWatched(formData: FormData) {
 }
 
 export async function removeWatched(formData: FormData) {
-  const client = await currentClient();
+  const client = await currentClient("config");
   const id = Number(formData.get("id"));
   if (!client || !Number.isInteger(id)) return;
   await removeWatch(db, client.id, id);
