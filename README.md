@@ -12,7 +12,7 @@ Plataforma multicliente de Ogilvy Colombia para atender los comentarios y mensaj
 - **Hoja de casos:** se conecta con Google y lee la Hoja de cálculo donde el equipo registra los casos; cuando un caso cambia a un estado que avisa, le escribe a la persona por DM según la ventana de Meta.
 - **Panel web** con resumen e indicadores, bandeja, pruebas, interacciones y ficha por persona, editor de la matriz, plantillas con versiones, base de conocimiento, palabras prohibidas, perfiles e influenciadores, cuentas conectadas y clientes.
 - **Reseñas de Google:** un botón «Conectar con Google» detecta solas las fichas de la persona; la plataforma lee las reseñas de las sedes que se elijan, las clasifica con su propia matriz y propone la respuesta. Por ahora solo en modo prueba: no responde en Google.
-- **Usuarios y roles:** la administración crea usuarios con contraseña temporal, restablece contraseñas, desactiva cuentas y asigna clientes. Tres roles: administrador, operador (Bandeja) y verificador (Pruebas).
+- **Usuarios y roles:** la administración crea usuarios con contraseña temporal, restablece contraseñas, desactiva cuentas y asigna clientes. Cuatro roles: administrador (todo), colaborador (todo lo del cliente asignado, menos Clientes y Usuarios), operador (Bandeja) y verificador (Pruebas).
 
 ## Cómo funciona
 

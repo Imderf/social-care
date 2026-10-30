@@ -47,6 +47,19 @@ export async function createClient(db: Pool, name: string, copyFrom: number | nu
   return id;
 }
 
+// Crear cliente desde el panel. Quien no es administrador solo copia la configuración de un cliente suyo y queda
+// como miembro del nuevo (si no, no podría entrar en él ni verlo).
+export async function createClientBy(db: Pool, who: { id: number; role: string }, name: string, copyFrom: number | null) {
+  const admin = who.role === "admin";
+  if (copyFrom && !admin) {
+    const own = await all(db, "SELECT 1 FROM client_members WHERE user_id = ? AND client_id = ?", [who.id, copyFrom]);
+    if (!own.length) copyFrom = null;
+  }
+  const id = await createClient(db, name, copyFrom);
+  if (!admin) await db.query("INSERT INTO client_members (client_id, user_id, role) VALUES (?, ?, ?)", [id, who.id, who.role]);
+  return id;
+}
+
 // Archivar saca al cliente del selector y desconecta sus cuentas (dejan de entrar mensajes);
 // restaurar lo vuelve a mostrar. Las cuentas se reconectan desde Cuentas conectadas.
 export async function setClientArchived(db: Pool, id: number, archived: boolean) {

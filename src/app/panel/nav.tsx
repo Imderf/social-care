@@ -30,7 +30,7 @@ const GROUPS = [
   {
     label: "Administración",
     items: [
-      { href: "/panel/clientes", label: "Clientes", icon: Building2, perm: "config" },
+      { href: "/panel/clientes", label: "Clientes", icon: Building2, perm: "clientes" },
       { href: "/panel/usuarios", label: "Usuarios", icon: Users, perm: "usuarios" },
     ],
   },

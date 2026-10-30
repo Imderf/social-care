@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import type { Pool, RowDataPacket } from "mysql2/promise";
 import { generateTempPassword, login, passwordError, saveUser, sessionValid, startSession, verifyPassword } from "../src/lib/auth.ts";
-import { createClient, listClients, listClientsOf } from "../src/lib/data.ts";
+import { createClient, createClientBy, listClients, listClientsOf } from "../src/lib/data.ts";
 import { ALLOWED, can } from "../src/lib/permissions.ts";
 import { UserError, changeOwnPassword, createUser, listUserEvents, listUsers, loadAccess, memberClientIds, resetPassword, setActive, unlockUser, updateUser } from "../src/lib/users.ts";
 import { freshTestDb } from "./test-db.ts";
@@ -189,8 +189,9 @@ test("los usuarios que ya existían quedan como administradores y se ven en la l
   assert.equal(v.lastLogin, null);
 });
 
-test("permisos por rol: cada uno ve lo suyo y solo el administrador configura y administra", () => {
-  assert.deepEqual(ALLOWED.config, ["admin"]);
+test("permisos por rol: cada uno ve lo suyo, el colaborador todo lo del administrador menos Usuarios", () => {
+  assert.deepEqual(ALLOWED.config, ["admin", "colaborador"]);
+  assert.deepEqual(ALLOWED.clientes, ["admin", "colaborador"]);
   assert.deepEqual(ALLOWED.usuarios, ["admin"]);
   assert.equal(can("operador", "bandeja"), true);
   assert.equal(can("operador", "pruebas"), false);
@@ -198,5 +199,41 @@ test("permisos por rol: cada uno ve lo suyo y solo el administrador configura y 
   assert.equal(can("verificador", "bandeja"), false);
   assert.equal(can("operador", "config"), false);
   assert.equal(can("verificador", "usuarios"), false);
-  assert.equal(can("admin", "bandeja") && can("admin", "pruebas") && can("admin", "config") && can("admin", "usuarios"), true);
+  assert.equal(can("admin", "bandeja") && can("admin", "pruebas") && can("admin", "config") && can("admin", "clientes") && can("admin", "usuarios"), true);
+  assert.equal(can("colaborador", "bandeja") && can("colaborador", "pruebas") && can("colaborador", "config") && can("colaborador", "clientes"), true);
+  assert.equal(can("colaborador", "usuarios"), false);
+  assert.equal(can("operador", "clientes") || can("verificador", "clientes"), false);
+});
+
+test("un colaborador se crea, queda como miembro de su cliente y un operador pasa a colaborador sin perder el cliente", async () => {
+  const r = await crearTemporal({ username: "colab.uno", name: "Colab Uno", role: "colaborador", clientIds: [cafam] });
+  assert.equal((await loadAccess(db, r.id))!.role, "colaborador");
+  assert.deepEqual((await rows("SELECT role FROM client_members WHERE user_id = ?", [r.id])).map((m) => m.role), ["colaborador"]);
+  const o = await crearTemporal({ username: "colab.dos", name: "Colab Dos", role: "operador", clientIds: [cafam] });
+  await updateUser(db, admin, o.id, { name: "Colab Dos", email: "", role: "colaborador", clientIds: [cafam] });
+  assert.equal((await loadAccess(db, o.id))!.role, "colaborador");
+  assert.deepEqual((await memberClientIds(db, o.id)).map(Number), [cafam]);
+  assert.deepEqual((await rows("SELECT role FROM client_members WHERE user_id = ?", [o.id])).map((m) => m.role), ["colaborador"]);
+});
+
+test("un colaborador crea clientes y queda como miembro; solo copia la configuración de los suyos", async () => {
+  const col = await crearTemporal({ username: "colab.tres", name: "Colab Tres", role: "colaborador", clientIds: [cafam] });
+  await db.query("INSERT INTO knowledge_items (client_id, topic, title, content) VALUES (?, 'sede', 'Sede de otro cliente', 'texto')", [otro]);
+  await db.query("INSERT INTO knowledge_items (client_id, topic, title, content) VALUES (?, 'horario', 'Horario de Cafam', 'texto')", [cafam]);
+  const cuenta = { id: col.id, role: "colaborador" };
+
+  const propio = await createClientBy(db, cuenta, "Nuevo con copia de Cafam", cafam);
+  const ajeno = await createClientBy(db, cuenta, "Nuevo con copia de otro", otro);
+  const enBlanco = await createClientBy(db, cuenta, "Nuevo en blanco", null);
+  const mios = (await listClientsOf(db, col.id)).map((c) => Number(c.id));
+  assert.ok([propio, ajeno, enBlanco].every((id) => mios.includes(id)), "queda como miembro de lo que crea");
+  assert.ok(!mios.includes(otro), "y no ve el cliente ajeno");
+  assert.deepEqual((await rows("SELECT role FROM client_members WHERE user_id = ? AND client_id = ?", [col.id, propio])).map((m) => m.role), ["colaborador"]);
+  const conocimiento = async (id: number) => Number((await rows("SELECT COUNT(*) AS n FROM knowledge_items WHERE client_id = ?", [id]))[0].n);
+  assert.equal(await conocimiento(ajeno), 0, "no copia la configuración de un cliente que no es suyo");
+  assert.equal(await conocimiento(propio), await conocimiento(cafam), "sí copia la de uno suyo");
+
+  const porAdmin = await createClientBy(db, { id: admin, role: "admin" }, "Creado por el administrador", otro);
+  assert.equal(await conocimiento(porAdmin), await conocimiento(otro), "el administrador copia de cualquiera");
+  assert.deepEqual(await rows("SELECT 1 FROM client_members WHERE client_id = ?", [porAdmin]), [], "y no queda como miembro");
 });

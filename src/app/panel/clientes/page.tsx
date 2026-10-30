@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { Archive, ArchiveRestore, Building2, LogIn, Plus } from "lucide-react";
 import { db } from "@/lib/db";
 import { listAllClients } from "@/lib/data";
-import { currentClient } from "../current";
+import { memberClientIds } from "@/lib/users";
+import { currentClient, currentUser } from "../current";
 import { BUTTON, Badge, Empty, PageHeader, Panel, Skeleton, formatDate, plural } from "../ui";
 import { archive, create, open } from "./actions";
 
@@ -10,7 +11,10 @@ const FIELD = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[1
 const SMALL = "inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] font-bold text-ink-2 transition-colors hover:bg-canvas";
 
 async function ClientesContent() {
-  const [clients, current] = await Promise.all([listAllClients(db), currentClient("config")]);
+  const me = await currentUser("clientes");
+  // El administrador ve todos los clientes; las demás personas, solo los que tienen asignados.
+  const [everyone, current, mine] = await Promise.all([listAllClients(db), currentClient("clientes"), me.role === "admin" ? null : memberClientIds(db, me.id)]);
+  const clients = mine ? everyone.filter((c) => mine.includes(Number(c.id))) : everyone;
   const active = clients.filter((c) => !c.archived_at);
 
   return (
